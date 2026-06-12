@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PPFS Dashboard – องค์การบริหารส่วนจังหวัดสุราษฎร์ธานี</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Sarabun',sans-serif;background:#f0f4f8;color:#1e2d3d;font-size:14px;}
+
+/* ─── UPLOAD SCREEN ─── */
+#uploadScreen{position:fixed;inset:0;background:linear-gradient(135deg,#00539C 0%,#0077CC 55%,#00A8E8 100%);display:flex;align-items:center;justify-content:center;z-index:1000;flex-direction:column;gap:28px;}
+#uploadScreen.hidden{display:none;}
+.upload-card{background:#fff;border-radius:20px;padding:40px 48px;width:480px;max-width:92vw;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.upload-logo{font-size:52px;margin-bottom:8px;}
+.upload-title{font-size:22px;font-weight:700;color:#00539C;margin-bottom:4px;}
+.upload-sub{font-size:13px;color:#64748b;margin-bottom:28px;line-height:1.6;}
+.upload-zone{border:2.5px dashed #93c5fd;border-radius:14px;padding:36px 24px;cursor:pointer;transition:all .2s;background:#f8fafc;position:relative;}
+.upload-zone:hover,.upload-zone.drag{border-color:#0077CC;background:#eff6ff;}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.upload-zone-icon{font-size:36px;margin-bottom:8px;}
+.upload-zone-text{font-size:14px;color:#475569;font-weight:500;}
+.upload-zone-hint{font-size:12px;color:#94a3b8;margin-top:4px;}
+.upload-format{font-size:11px;color:#94a3b8;margin-top:20px;padding-top:16px;border-top:1px solid #f1f5f9;line-height:1.8;}
+.upload-error{background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:12px 16px;font-size:13px;color:#dc2626;margin-top:16px;display:none;text-align:left;}
+.upload-progress{margin-top:16px;display:none;}
+.upload-progress-bar{height:6px;background:#e2e8f0;border-radius:6px;overflow:hidden;}
+.upload-progress-fill{height:100%;background:linear-gradient(90deg,#0077CC,#00A8E8);width:0;transition:width .3s;border-radius:6px;}
+.upload-progress-text{font-size:12px;color:#64748b;margin-top:6px;}
+
+/* ─── HEADER ─── */
+.header{background:linear-gradient(135deg,#00539C 0%,#0077CC 60%,#00A8E8 100%);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.25);flex-wrap:wrap;gap:10px;}
+.header-left{display:flex;align-items:center;gap:12px;}
+.header-logo{width:40px;height:40px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.header-title{font-size:18px;font-weight:700;line-height:1.2;}
+.header-sub{font-size:11px;opacity:.85;margin-top:1px;}
+.header-right{display:flex;align-items:center;gap:10px;}
+.header-date{font-size:12px;background:rgba(255,255,255,.15);padding:5px 12px;border-radius:20px;}
+.btn-reload{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;padding:5px 14px;border-radius:20px;font-family:'Sarabun',sans-serif;font-size:12px;cursor:pointer;transition:background .2s;}
+.btn-reload:hover{background:rgba(255,255,255,.35);}
+
+/* ─── FILTERS ─── */
+.filters{background:#fff;padding:12px 24px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;border-bottom:2px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.filter-group{display:flex;align-items:center;gap:6px;}
+.filter-label{font-size:12px;color:#64748b;font-weight:600;white-space:nowrap;}
+select{font-family:'Sarabun',sans-serif;border:1.5px solid #cbd5e1;border-radius:8px;padding:5px 10px;font-size:13px;color:#1e2d3d;background:#fff;cursor:pointer;outline:none;}
+select:focus{border-color:#0077CC;}
+.btn-toggle{display:flex;background:#f1f5f9;border-radius:8px;overflow:hidden;border:1.5px solid #cbd5e1;}
+.btn-toggle button{font-family:'Sarabun',sans-serif;border:none;background:transparent;padding:5px 12px;font-size:13px;cursor:pointer;color:#64748b;transition:all .2s;}
+.btn-toggle button.active{background:#0077CC;color:#fff;font-weight:600;}
+.btn-pdf{margin-left:auto;background:#e53e3e;color:#fff;border:none;padding:6px 14px;border-radius:8px;font-family:'Sarabun',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .2s;}
+.btn-pdf:hover{background:#c53030;}
+.btn-pdf:disabled{opacity:.6;cursor:not-allowed;}
+
+/* ─── MAIN ─── */
+.main{display:flex;min-height:calc(100vh - 110px);}
+.content{flex:1;padding:18px 22px;overflow:auto;min-width:0;}
+
+/* ─── KPI CARDS ─── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.kpi-grid2{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
+.kpi-card{background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-left:4px solid #0077CC;position:relative;overflow:hidden;}
+.kpi-card.c2{border-color:#00A86B;}.kpi-card.c3{border-color:#F59E0B;}.kpi-card.c4{border-color:#8B5CF6;}
+.kpi-card.c5{border-color:#EC4899;}.kpi-card.c6{border-color:#10B981;}.kpi-card.c7{border-color:#F97316;}
+.kpi-icon{position:absolute;right:12px;top:12px;font-size:24px;opacity:.12;}
+.kpi-label{font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
+.kpi-value{font-size:22px;font-weight:700;color:#1e2d3d;margin-top:3px;line-height:1;}
+.kpi-sub{font-size:10px;color:#94a3b8;margin-top:3px;}
+
+/* ─── CHARTS ─── */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
+.chart-card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.chart-card.full{grid-column:1/-1;}
+.chart-title{font-size:13px;font-weight:700;color:#1e2d3d;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+
+/* ─── SERVICE GRID ─── */
+.service-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:16px;}
+.svc-item{background:#fff;border-radius:10px;padding:11px 13px;box-shadow:0 1px 3px rgba(0,0,0,.07);}
+.svc-name{font-size:11px;color:#475569;font-weight:600;margin-bottom:7px;line-height:1.35;min-height:28px;}
+.svc-stats{display:flex;gap:6px;margin-bottom:5px;}
+.svc-stat{flex:1;text-align:center;}
+.svc-stat-val{font-size:13px;font-weight:700;color:#0077CC;}
+.svc-stat-lbl{font-size:9px;color:#94a3b8;}
+.progress-bar{height:3px;background:#e2e8f0;border-radius:4px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,#0077CC,#00A8E8);border-radius:4px;transition:width .5s;}
+
+/* ─── TABLE ─── */
+.table-card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:16px;}
+.table-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;}
+.table-search{border:1.5px solid #cbd5e1;border-radius:8px;padding:5px 12px;font-family:'Sarabun',sans-serif;font-size:13px;outline:none;width:200px;}
+.table-search:focus{border-color:#0077CC;}
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{background:#f8fafc;padding:7px 9px;text-align:left;font-weight:700;color:#475569;border-bottom:2px solid #e2e8f0;font-size:11px;white-space:nowrap;cursor:pointer;user-select:none;}
+thead th:hover{background:#f1f5f9;}
+thead th.sorted-asc::after{content:" ▲";}
+thead th.sorted-desc::after{content:" ▼";}
+tbody tr{border-bottom:1px solid #f1f5f9;cursor:pointer;transition:background .12s;}
+tbody tr:hover{background:#f0f7ff;}
+tbody tr.selected{background:#dbeafe;border-left:3px solid #0077CC;}
+tbody td{padding:7px 9px;color:#374151;}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;}
+.badge-S{background:#fef9c3;color:#854d0e;}.badge-M{background:#dcfce7;color:#166534;}.badge-L{background:#dbeafe;color:#1e40af;}
+.pagination{display:flex;gap:5px;align-items:center;justify-content:flex-end;margin-top:10px;flex-wrap:wrap;}
+.pagination button{border:1.5px solid #cbd5e1;background:#fff;padding:3px 9px;border-radius:6px;cursor:pointer;font-family:'Sarabun',sans-serif;font-size:11px;}
+.pagination button.active{background:#0077CC;border-color:#0077CC;color:#fff;}
+.pagination span{font-size:11px;color:#64748b;}
+
+/* ─── DETAIL PANEL ─── */
+.detail-panel{width:360px;min-width:360px;background:#fff;border-left:2px solid #e2e8f0;padding:18px;overflow-y:auto;display:none;position:relative;}
+.detail-panel.open{display:block;}
+.detail-close{position:absolute;right:14px;top:14px;background:none;border:none;font-size:18px;cursor:pointer;color:#94a3b8;}
+.detail-name{font-size:15px;font-weight:700;color:#1e2d3d;margin-bottom:3px;padding-right:28px;}
+.detail-meta{font-size:11px;color:#64748b;margin-bottom:14px;}
+.d-kpis{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:14px;}
+.d-kpi{background:#f8fafc;border-radius:8px;padding:9px;text-align:center;}
+.d-kpi-val{font-size:15px;font-weight:700;color:#0077CC;}
+.d-kpi-lbl{font-size:10px;color:#94a3b8;margin-top:2px;}
+.d-svc-row{display:flex;align-items:flex-start;gap:6px;padding:5px 0;border-bottom:1px solid #f1f5f9;}
+.d-svc-name{flex:1;font-size:11px;color:#475569;line-height:1.3;}
+.d-svc-vals{font-size:11px;font-weight:600;color:#0077CC;min-width:44px;text-align:right;white-space:nowrap;}
+.d-svc-sub{font-size:9px;color:#94a3b8;text-align:right;}
+.detail-chart-wrap{height:180px;position:relative;margin-bottom:14px;}
+
+/* ─── STAT SUMMARY ROWS ─── */
+.stat-row{background:#fff;border-radius:12px;padding:14px 18px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:16px;}
+.stat-row-title{font-size:12px;font-weight:700;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px;}
+.district-bars{display:flex;flex-direction:column;gap:6px;}
+.d-bar-row{display:flex;align-items:center;gap:8px;}
+.d-bar-name{font-size:11px;color:#475569;width:130px;flex-shrink:0;}
+.d-bar-wrap{flex:1;height:14px;background:#f1f5f9;border-radius:8px;overflow:hidden;}
+.d-bar-fill{height:100%;background:linear-gradient(90deg,#0077CC,#00A8E8);border-radius:8px;transition:width .5s;}
+.d-bar-val{font-size:11px;font-weight:600;color:#1e2d3d;min-width:60px;text-align:right;}
+
+@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.charts-grid{grid-template-columns:1fr;}.service-grid{grid-template-columns:repeat(2,1fr);}.detail-panel{width:100%;min-width:unset;}}
+@media(max-width:680px){.kpi-grid,.kpi-grid2{grid-template-columns:1fr 1fr;}.service-grid{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+
+<!-- ═══ UPLOAD SCREEN ═══ -->
+<div id="uploadScreen">
+  <div class="upload-card">
+    <div class="upload-logo">🏥</div>
+    <div class="upload-title">PPFS Dashboard</div>
+    <div class="upload-sub">องค์การบริหารส่วนจังหวัดสุราษฎร์ธานี · ระบบวิเคราะห์ผลงาน 99 รพ.สต.<br>อัปโหลดไฟล์ Template PPFS เพื่อเริ่มต้น</div>
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+      <div class="upload-zone-icon">📂</div>
+      <div class="upload-zone-text">คลิกเพื่อเลือกไฟล์ หรือลากวางที่นี่</div>
+      <div class="upload-zone-hint">รองรับไฟล์ .xlsx / .xls (Template PPFS)</div>
+    </div>
+    <div class="upload-progress" id="uploadProgress">
+      <div class="upload-progress-bar"><div class="upload-progress-fill" id="progressFill"></div></div>
+      <div class="upload-progress-text" id="progressText">กำลังประมวลผล...</div>
+    </div>
+    <div class="upload-error" id="uploadError"></div>
+    <div class="upload-format">
+      <b>รูปแบบไฟล์ที่รองรับ:</b> Template PPFS มาตรฐาน องค์การบริหารส่วนจังหวัดสุราษฎร์ธานี<br>
+      แถวที่ 1 = วันที่ข้อมูล · แถวที่ 3 = ชื่อบริการ · แถวที่ 4+ = ข้อมูลรายหน่วย<br>
+      ระบบจะแสดงเฉพาะข้อมูลของ <b>99 รพ.สต.</b> ตามรายชื่อที่กำหนด
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DASHBOARD ═══ -->
+<div id="dashboard" style="display:none;">
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo">🏥</div>
+    <div>
+      <div class="header-title">PPFS Dashboard – องค์การบริหารส่วนจังหวัดสุราษฎร์ธานี</div>
+      <div class="header-sub">วิเคราะห์ผลงานบริการส่งเสริมสุขภาพ 99 รพ.สต. · จัดทำโดย ฝ่ายบริการสาธารณสุข กองสาธารณสุข องค์การบริหารส่วนจังหวัดสุราษฎร์ธานี</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="header-date" id="dateDisplay">📅 –</div>
+    <button class="btn-reload" onclick="showUpload()">🔄 โหลดไฟล์ใหม่</button>
+  </div>
+</div>
+
+<div class="filters">
+  <div class="filter-group">
+    <span class="filter-label">ขนาด:</span>
+    <div class="btn-toggle" id="sizeToggle">
+      <button class="active" onclick="setSize('all',this)">ทั้งหมด</button>
+      <button onclick="setSize('S',this)">S (31)</button>
+      <button onclick="setSize('M',this)">M (62)</button>
+      <button onclick="setSize('L',this)">L (6)</button>
+    </div>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">อำเภอ:</span>
+    <select id="districtSel" onchange="onDistrictChange()"><option value="">— ทุกอำเภอ (14) —</option></select>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">รพ.สต.:</span>
+    <select id="unitSel" onchange="onUnitChange()"><option value="">— ทุกหน่วย —</option></select>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">แสดงผล:</span>
+    <div class="btn-toggle" id="metricToggle">
+      <button class="active" onclick="setMetric('people',this)">👤 คน</button>
+      <button onclick="setMetric('times',this)">📋 ครั้ง</button>
+      <button onclick="setMetric('baht',this)">💰 บาท</button>
+    </div>
+  </div>
+  <button class="btn-pdf" id="btnPDF" onclick="exportPDF()">📄 ดาวน์โหลด PDF</button>
+</div>
+
+<div class="main">
+<div class="content" id="mainContent">
+
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-icon">👥</div><div class="kpi-label">ประชากรรวม</div><div class="kpi-value" id="k-pop">–</div><div class="kpi-sub">ราษฎรทะเบียนบ้าน</div></div>
+    <div class="kpi-card c2"><div class="kpi-icon">🏥</div><div class="kpi-label">ผู้รับบริการ</div><div class="kpi-value" id="k-people">–</div><div class="kpi-sub">จำนวนคน</div></div>
+    <div class="kpi-card c3"><div class="kpi-icon">📋</div><div class="kpi-label">จำนวนครั้ง</div><div class="kpi-value" id="k-times">–</div><div class="kpi-sub">ครั้งบริการ</div></div>
+    <div class="kpi-card c4"><div class="kpi-icon">💰</div><div class="kpi-label">ค่าชดเชยรวม</div><div class="kpi-value" id="k-baht">–</div><div class="kpi-sub">บาท</div></div>
+  </div>
+  <div class="kpi-grid2">
+    <div class="kpi-card c5"><div class="kpi-icon">🏨</div><div class="kpi-label">รพ.สต. ในกลุ่ม</div><div class="kpi-value" id="k-units">–</div><div class="kpi-sub">หน่วยบริการ (จาก 99)</div></div>
+    <div class="kpi-card c6"><div class="kpi-icon">✅</div><div class="kpi-label">บริการที่มีผลงาน</div><div class="kpi-value" id="k-svcs">–</div><div class="kpi-sub">จาก 25 ประเภทบริการ</div></div>
+    <div class="kpi-card c7"><div class="kpi-icon">⚡</div><div class="kpi-label">เฉลี่ยต่อ รพ.สต.</div><div class="kpi-value" id="k-avg">–</div><div class="kpi-sub" id="k-avg-lbl">ต่อหน่วย</div></div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">📊 ผลงานรายอำเภอ</div>
+      <div style="height:260px;position:relative;"><canvas id="chartDistrict"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">🍩 สัดส่วน Top 10 บริการ</div>
+      <div style="height:260px;position:relative;"><canvas id="chartDoughnut"></canvas></div>
+    </div>
+  </div>
+
+  <div class="chart-card full" style="margin-bottom:16px;">
+    <div class="chart-title">🏆 Top 15 รพ.สต. ผลงานสูงสุด</div>
+    <div style="height:290px;position:relative;"><canvas id="chartTop15"></canvas></div>
+  </div>
+
+  <div class="chart-title" style="margin-bottom:10px;font-size:13px;font-weight:700;">🔬 ผลงานรายบริการทั้ง 25 ประเภท</div>
+  <div class="service-grid" id="serviceGrid"></div>
+
+  <div class="table-card">
+    <div class="table-header">
+      <div class="chart-title" style="margin:0;">📋 รายละเอียดรายหน่วยบริการ <span style="font-weight:400;color:#94a3b8;font-size:11px;">(คลิกแถวเพื่อดูรายละเอียด)</span></div>
+      <input class="table-search" id="tableSearch" placeholder="🔍 ค้นหาชื่อ รพ.สต..." oninput="currentPage=1;renderTable()">
+    </div>
+    <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortTable('code')">รหัส</th>
+          <th onclick="sortTable('unit')">หน่วยบริการ</th>
+          <th onclick="sortTable('size')">ขนาด</th>
+          <th onclick="sortTable('district')">อำเภอ</th>
+          <th onclick="sortTable('population')">ประชากร</th>
+          <th onclick="sortTable('total_people')">คน</th>
+          <th onclick="sortTable('total_times')">ครั้ง</th>
+          <th onclick="sortTable('total_baht')">บาท</th>
+          <th onclick="sortTable('svc_count')">บริการที่มีผลงาน</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+
+</div><!-- end .content -->
+
+<div class="detail-panel" id="detailPanel">
+  <button class="detail-close" onclick="closeDetail()">✕</button>
+  <div class="detail-name" id="dName">–</div>
+  <div class="detail-meta" id="dMeta">–</div>
+  <div class="d-kpis" id="dKpis"></div>
+  <div class="chart-title" style="font-size:12px;">📊 คน / ครั้ง (Top 8 บริการ)</div>
+  <div class="detail-chart-wrap"><canvas id="detailChart"></canvas></div>
+  <div class="chart-title" style="font-size:12px;margin-top:4px;margin-bottom:8px;">🔬 รายการบริการที่มีผลงาน</div>
+  <div id="dSvcList"></div>
+</div>
+</div><!-- end .main -->
+</div><!-- end #dashboard -->
+
+<script>
+// ═══ HOSPITAL MASTER DATA (99 รพ.สต.) ═══
+const HOSP_MASTER = [{"code": "09144", "name": "รพ.สต.วัดประดู่", "size": "L", "district": "อำเภอเมือง"}, {"code": "09145", "name": "รพ.สต.บ้านใหม่พัฒนา", "size": "M", "district": "อำเภอเมือง"}, {"code": "09148", "name": "รพ.สต.บางใบไม้", "size": "S", "district": "อำเภอเมือง"}, {"code": "09151", "name": "รพ.สต.คลองน้อย/เมือง", "size": "M", "district": "อำเภอเมือง"}, {"code": "09152", "name": "รพ.สต.บางไทร", "size": "S", "district": "อำเภอเมือง"}, {"code": "09153", "name": "รพ.สต.บางโพธิ์", "size": "S", "district": "อำเภอเมือง"}, {"code": "09154", "name": "รพ.สต.บางกุ้ง", "size": "L", "district": "อำเภอเมือง"}, {"code": "09155", "name": "รพ.สต.คลองฉนาก", "size": "M", "district": "อำเภอเมือง"}, {"code": "09156", "name": "รพ.สต.ท่าทองใหม่", "size": "L", "district": "อำเภอกาญจนดิษฐ์"}, {"code": "09158", "name": "รพ.สต.ท่าทอง", "size": "S", "district": "อำเภอกาญจนดิษฐ์"}, {"code": "09159", "name": "รพ.สต.ทุ่งกง", "size": "M", "district": "อำเภอกาญจนดิษฐ์"}, {"code": "09160", "name": "รพ.สต.กรูด/กาญจนดิษฐ์", "size": "L", "district": "อำเภอกาญจนดิษฐ์"}, {"code": "09162", "name": "รพ.สต.บ้านกงตาก", "size": "M", "district": "อำเภอกาญจนดิษฐ์"}, {"code": "09163", "name": "รพ.สต.พลายวาส", "size": "M", "district": "อำเภอกาญจนดิษฐ์"}, {"code": "09164", "name": "รพ.สต.บ้านวังไทร", "size": "M", "district": "อำเภอกาญจนดิษฐ์"}, {"code": "09165", "name": "รพ.สต.ป่าร่อน", "size": "S", "district": "อำเภอกาญจนดิษฐ์"}, {"code": "09166", "name": "รพ.สต.ตะเคียนทอง", "size": "M", "district": "อำเภอกาญจนดิษฐ์"}, {"code": "09167", "name": "รพ.สต.ช้างขวา", "size": "M", "district": "อำเภอกาญจนดิษฐ์"}, {"code": "09168", "name": "รพ.สต.บ้านหัวหมากล่าง", "size": "M", "district": "อำเภอกาญจนดิษฐ์"}, {"code": "09169", "name": "รพ.สต.ท่าอุแท", "size": "M", "district": "อำเภอกาญจนดิษฐ์"}, {"code": "09170", "name": "รพ.สต.หมู่บ้านตัวอย่าง", "size": "M", "district": "อำเภอกาญจนดิษฐ์"}, {"code": "09171", "name": "รพ.สต.ทุ่งรัง", "size": "M", "district": "อำเภอกาญจนดิษฐ์"}, {"code": "09176", "name": "รพ.สต.บ้านศรีไชยคราม", "size": "S", "district": "อำเภอดอนสัก"}, {"code": "09177", "name": "รพ.สต.บ้านใน", "size": "L", "district": "อำเภอดอนสัก"}, {"code": "09178", "name": "รพ.สต.ปากแพรก", "size": "M", "district": "อำเภอดอนสัก"}, {"code": "09193", "name": "รพ.สต.พุมเรียง", "size": "M", "district": "อำเภอไชยา"}, {"code": "09194", "name": "รพ.สต.เลม็ด", "size": "M", "district": "อำเภอไชยา"}, {"code": "09195", "name": "รพ.สต.เวียง", "size": "M", "district": "อำเภอไชยา"}, {"code": "09196", "name": "รพ.สต.ทุ่ง", "size": "M", "district": "อำเภอไชยา"}, {"code": "09201", "name": "รพ.สต.สมอทอง", "size": "M", "district": "อำเภอท่าชนะ"}, {"code": "09202", "name": "รพ.สต.ประสงค์", "size": "M", "district": "อำเภอท่าชนะ"}, {"code": "09203", "name": "รพ.สต.บ้านประสงค์", "size": "M", "district": "อำเภอท่าชนะ"}, {"code": "09204", "name": "รพ.สต.บ้านคลองโสด", "size": "M", "district": "อำเภอท่าชนะ"}, {"code": "09205", "name": "รพ.สต.บ้านคลองรอก", "size": "M", "district": "อำเภอท่าชนะ"}, {"code": "09206", "name": "รพ.สต.คันธุลี", "size": "L", "district": "อำเภอท่าชนะ"}, {"code": "09207", "name": "รพ.สต.วัง", "size": "S", "district": "อำเภอท่าชนะ"}, {"code": "09208", "name": "รพ.สต.บ้านปากกิ่ว", "size": "S", "district": "อำเภอท่าชนะ"}, {"code": "09209", "name": "รพ.สต.คลองพา", "size": "M", "district": "อำเภอท่าชนะ"}, {"code": "09210", "name": "รพ.สต.บ้านสัมปัง", "size": "S", "district": "อำเภอท่าชนะ"}, {"code": "09211", "name": "รพ.สต.บ้านท่าไท", "size": "S", "district": "อำเภอท่าชนะ"}, {"code": "09215", "name": "รพ.สต.ท่ากระดาน", "size": "M", "district": "อำเภอคีรีรัฐนิคม"}, {"code": "09216", "name": "รพ.สต.บ้านย่านยาว", "size": "S", "district": "อำเภอคีรีรัฐนิคม"}, {"code": "09217", "name": "รพ.สต.บ้านย่านมะปราง", "size": "M", "district": "อำเภอคีรีรัฐนิคม"}, {"code": "09218", "name": "รพ.สต.ถ้ำสิงขร", "size": "M", "district": "อำเภอคีรีรัฐนิคม"}, {"code": "09220", "name": "รพ.สต.วังขุม", "size": "S", "district": "อำเภอบ้านตาขุน"}, {"code": "09221", "name": "รพ.สต.บ้านปากน้ำ", "size": "S", "district": "อำเภอบ้านตาขุน"}, {"code": "09224", "name": "รพ.สต.เขาพัง", "size": "S", "district": "อำเภอบ้านตาขุน"}, {"code": "09226", "name": "รพ.สต.พนม", "size": "M", "district": "อำเภอพนม"}, {"code": "09227", "name": "รพ.สต.บางสาน", "size": "S", "district": "อำเภอพนม"}, {"code": "09229", "name": "รพ.สต.บ้านเขานาใน", "size": "M", "district": "อำเภอพนม"}, {"code": "09230", "name": "รพ.สต.บ้านสองพี่น้อง", "size": "S", "district": "อำเภอพนม"}, {"code": "09231", "name": "รพ.สต.คลองศก", "size": "M", "district": "อำเภอพนม"}, {"code": "09233", "name": "รพ.สต.คลองชะอุ่น", "size": "M", "district": "อำเภอพนม"}, {"code": "09235", "name": "รพ.สต.ท่าเคย", "size": "M", "district": "อำเภอท่าฉาง"}, {"code": "09236", "name": "รพ.สต.คลองไทร", "size": "M", "district": "อำเภอท่าฉาง"}, {"code": "09237", "name": "รพ.สต.เขาถ่าน", "size": "M", "district": "อำเภอท่าฉาง"}, {"code": "09238", "name": "รพ.สต.เสวียด", "size": "M", "district": "อำเภอท่าฉาง"}, {"code": "09239", "name": "รพ.สต.ปากฉลุย", "size": "M", "district": "อำเภอท่าฉาง"}, {"code": "09240", "name": "รพ.สต.พรุพี", "size": "S", "district": "อำเภอบ้านนาสาร"}, {"code": "09241", "name": "รพ.สต.บ้านช่องช้าง", "size": "S", "district": "อำเภอบ้านนาสาร"}, {"code": "09242", "name": "รพ.สต.ทุ่งเตา", "size": "S", "district": "อำเภอบ้านนาสาร"}, {"code": "09243", "name": "รพ.สต.บ้านทุ่งในไร่", "size": "S", "district": "อำเภอบ้านนาสาร"}, {"code": "09244", "name": "รพ.สต.บ้านปลายน้ำ", "size": "M", "district": "อำเภอบ้านนาสาร"}, {"code": "09246", "name": "รพ.สต.ท่าชี", "size": "M", "district": "อำเภอบ้านนาสาร"}, {"code": "09247", "name": "รพ.สต.ควนศรี", "size": "M", "district": "อำเภอบ้านนาสาร"}, {"code": "09248", "name": "รพ.สต.ควนสุบรรณ", "size": "M", "district": "อำเภอบ้านนาสาร"}, {"code": "09249", "name": "รพ.สต.คลองปราบ", "size": "M", "district": "อำเภอบ้านนาสาร"}, {"code": "09250", "name": "รพ.สต.บ้านยางอุง", "size": "M", "district": "อำเภอบ้านนาสาร"}, {"code": "09251", "name": "รพ.สต.ทุ่งเตาใหม่", "size": "M", "district": "อำเภอบ้านนาสาร"}, {"code": "09252", "name": "รพ.สต.เพิ่มพูนทรัพย์", "size": "M", "district": "อำเภอบ้านนาสาร"}, {"code": "09261", "name": "รพ.สต.บ้านควนกลิ้ง", "size": "M", "district": "อำเภอเคียนซา"}, {"code": "09273", "name": "รพ.สต.บ้านไสขรบ", "size": "M", "district": "อำเภอพระแสง"}, {"code": "09275", "name": "รพ.สต.บ้านควนมหาชัย", "size": "M", "district": "อำเภอพระแสง"}, {"code": "09276", "name": "รพ.สต.บ้านเกาะน้อย", "size": "M", "district": "อำเภอพระแสง"}, {"code": "09278", "name": "รพ.สต.ไทรขึง", "size": "M", "district": "อำเภอพระแสง"}, {"code": "09283", "name": "รพ.สต.หมู่บ้านป่าไม้พระราชประสงค์ 1", "size": "M", "district": "อำเภอพระแสง"}, {"code": "09286", "name": "รพ.สต.สวนป่าพัฒนา", "size": "M", "district": "อำเภอพระแสง"}, {"code": "09287", "name": "รพ.สต.พุนพิน", "size": "S", "district": "อำเภอพุนพิน"}, {"code": "09288", "name": "รพ.สต.ท่าสะท้อน", "size": "M", "district": "อำเภอพุนพิน"}, {"code": "09289", "name": "รพ.สต.ลีเล็ด", "size": "M", "district": "อำเภอพุนพิน"}, {"code": "09290", "name": "รพ.สต.บางมะเดื่อ", "size": "M", "district": "อำเภอพุนพิน"}, {"code": "09291", "name": "รพ.สต.บางเดือน", "size": "S", "district": "อำเภอพุนพิน"}, {"code": "09292", "name": "รพ.สต.ท่าโรงช้าง", "size": "S", "district": "อำเภอพุนพิน"}, {"code": "09293", "name": "รพ.สต.กรูด/พุนพิน", "size": "M", "district": "อำเภอพุนพิน"}, {"code": "09294", "name": "รพ.สต.บางงอน", "size": "M", "district": "อำเภอพุนพิน"}, {"code": "09295", "name": "รพ.สต.ศรีวิชัย", "size": "S", "district": "อำเภอพุนพิน"}, {"code": "09296", "name": "รพ.สต.น้ำรอบ", "size": "S", "district": "อำเภอพุนพิน"}, {"code": "09297", "name": "รพ.สต.มะลวน", "size": "S", "district": "อำเภอพุนพิน"}, {"code": "09298", "name": "รพ.สต.บ้านห้วยกรวด", "size": "S", "district": "อำเภอพุนพิน"}, {"code": "09299", "name": "รพ.สต.หัวเตย", "size": "S", "district": "อำเภอพุนพิน"}, {"code": "09300", "name": "รพ.สต.หนองไทร", "size": "M", "district": "อำเภอพุนพิน"}, {"code": "09301", "name": "รพ.สต.เขาหัวควาย", "size": "M", "district": "อำเภอพุนพิน"}, {"code": "09302", "name": "รพ.สต.ตะปาน", "size": "M", "district": "อำเภอพุนพิน"}, {"code": "09303", "name": "รพ.สต.ชัยบุรี", "size": "M", "district": "อำเภอชัยบุรี"}, {"code": "09305", "name": "รพ.สต.คลองน้อย/ชัยบุรี", "size": "M", "district": "อำเภอชัยบุรี"}, {"code": "14088", "name": "รพ.สต.บ้านเกาะนกเภา", "size": "S", "district": "อำเภอดอนสัก"}, {"code": "14204", "name": "รพ.สต.บ้านบางรูป", "size": "S", "district": "อำเภอพระแสง"}, {"code": "25021", "name": "รพ.สต.ควนพน", "size": "S", "district": "อำเภอพนม"}, {"code": "77563", "name": "รพ.สต.บ้านยางโพรง", "size": "M", "district": "อำเภอไชยา"}];
+const HOSP_MAP = {};
+HOSP_MASTER.forEach(h=>{ HOSP_MAP[h.code]=h; });
+const VALID_CODES = new Set(HOSP_MASTER.map(h=>h.code));
+
+const SVC_SHORT = {
+  "1. บริการฝากครรภ์":"ฝากครรภ์",
+  "2.บริการป้องกันและควบคุมโรคโลหิตจางธาลัสซีเมียในหญิงตั้งครรภ์":"โลหิตจางธาลัส",
+  "3.2บริการคัดกรองโรคซิฟิลิส":"ซิฟิลิส",
+  "4.บริการป้องกันและควบคุมกลุ่มอาการดาวน์ในหญิงตั้งครรภ์":"กลุ่มอาการดาวน์",
+  "5. บริการป้องกันและควบคุมภาวะพร่องฮอร์โมไทรอยด์ (TSH)":"ไทรอยด์ TSH",
+  "6. บริการตรวจคัดกรองผู้ป่วยโรคพันธุกรรมเมตาบอลิกด้วยเครื่อง  Tandem mass spectrometry (TMS) ":"TMS พันธุกรรม",
+  "7.บริการตรวจหลังคลอด":"ตรวจหลังคลอด",
+  "8.บริการทดสอบการตั้งครรภ์":"ทดสอบตั้งครรภ์",
+  "9.บริการวางแผนครอบครัวและการป้องกันตั้งครรภ์ไม่พึงประสงค์":"วางแผนครอบครัว",
+  "10.บริการยุติการตั้งครรภ์ที่ไม่ปลอดภัย":"ยุติตั้งครรภ์",
+  "11.บริการแว่นตาเด็ก":"แว่นตาเด็ก",
+  "12.บริการคัดกรองมะเร็งปากมดลูก":"มะเร็งปากมดลูก",
+  "13.บริการคัดกรองรอยโรคเสี่ยงมะเร็งและมะเร็งช่องปาด (Ca Oral Screening)":"มะเร็งช่องปาก",
+  "14.บริการตรวจคัดกรองและค้นหาวัณโรคในกลุ่มเสี่ยงสูง":"วัณโรค",
+  "15. บริการคัดกรองเบาหวานและไขมันในเลือด":"เบาหวาน/ไขมัน",
+  "16. บริการตรวจคัดกรองยีนกลายพันธ์โรคมะเร็งเต้านม (BRCA1/BRCA2":"BRCA1/2",
+  "17.บริการคัดกรองโลหิตจางจากการขาดธาตุเหล็ก":"โลหิตจางเหล็ก",
+  "18. บริการยาเม็ดเสริมธาตุเหล็กและกรดโฟลิค":"ยาเสริมเหล็ก+โฟลิค",
+  "19.บริการเคลือบฟลูออไรด์":"เคลือบฟลูออไรด์",
+  "20. บริการคัดกรองมะเร็งลำไส้ใหญ่และลำไส้ตรง (Fit Test)":"มะเร็งลำไส้ FIT",
+  "21.บริการคัดกรองไวรัสตับอักเสบบี":"ตับอักเสบ B",
+  "22.บริการคัดกรองไวรัสตับอักเสบซี":"ตับอักเสบ C",
+  "24.บริการคัดกรองมะเร็งเต้านมด้วยเครื่องแมมแกรมและอัลตราซาวด์":"มะเร็งเต้านม",
+  "25.บริการให้วัคซีนป้องกันโรค":"วัคซีนป้องกันโรค",
+  "28.บริการชุดตรวจคัดกรองเอชไอวีด้วยตนเอง":"HIV ตรวจเอง"
+};
+
+const COLORS=['#0077CC','#00A86B','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6','#F97316','#06B6D4','#84CC16','#A78BFA','#FB923C','#34D399','#60A5FA','#F472B6'];
+
+let DB = null; // parsed data
+let metric = 'people';
+let sizeFilter = 'all';
+let districtFilter = '';
+let unitFilter = '';
+let currentPage = 1;
+const PAGE_SIZE = 20;
+let selectedCode = null;
+let sortCol = 'total_people';
+let sortDir = -1;
+let chartD=null, chartDo=null, chartT=null, detailCh=null;
+
+// ═══ UPLOAD HANDLING ═══
+function showUpload(){
+  document.getElementById('uploadScreen').classList.remove('hidden');
+  document.getElementById('dashboard').style.display='none';
+}
+function hideUpload(){
+  document.getElementById('uploadScreen').classList.add('hidden');
+  document.getElementById('dashboard').style.display='block';
+}
+
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover',e=>{e.preventDefault();uploadZone.classList.add('drag');});
+uploadZone.addEventListener('dragleave',()=>uploadZone.classList.remove('drag'));
+uploadZone.addEventListener('drop',e=>{e.preventDefault();uploadZone.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)processFile(f);});
+document.getElementById('fileInput').addEventListener('change',e=>{if(e.target.files[0])processFile(e.target.files[0]);});
+
+function showError(msg){
+  const el=document.getElementById('uploadError');
+  el.textContent=msg; el.style.display='block';
+  document.getElementById('uploadProgress').style.display='none';
+}
+function setProgress(pct,text){
+  document.getElementById('uploadProgress').style.display='block';
+  document.getElementById('progressFill').style.width=pct+'%';
+  document.getElementById('progressText').textContent=text;
+  document.getElementById('uploadError').style.display='none';
+}
+
+function processFile(file){
+  if(!file.name.match(/\.xlsx?$/i)){showError('❌ รองรับเฉพาะไฟล์ .xlsx หรือ .xls เท่านั้น');return;}
+  setProgress(10,'กำลังอ่านไฟล์...');
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      setProgress(30,'กำลังแปลงข้อมูล...');
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data,{type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+      setProgress(60,'กำลังตรวจสอบรูปแบบ...');
+      parseRows(rows, ws);
+      setProgress(100,'เสร็จสิ้น!');
+      setTimeout(()=>{ hideUpload(); renderAll(); },400);
+    }catch(err){
+      showError('❌ '+err.message);
+    }
+  };
+  reader.onerror=()=>showError('❌ ไม่สามารถอ่านไฟล์ได้');
+  reader.readAsArrayBuffer(file);
+}
+
+function parseRows(rows, ws){
+  // Row 0 = date, Row 2 = service headers (merged cells), Row 3 = คน/ครั้ง/บาท, Row 4+ = data
+  const dateStr = rows[0] ? String(rows[0][0]||'').trim() : '';
+
+  // ── อ่านชื่อบริการจาก raw worksheet cell โดยตรง ──
+  // Excel ใช้ Merged Cells (C3:E3, F3:H3 ...) ทำให้ sheet_to_json expand ค่าซ้ำทุก col
+  // ต้องอ่านจาก ws['C3'].v, ws['F3'].v, ws['I3'].v ... แทน
+  function colLetter(n){ // 0-based col index → Excel letter (A=0)
+    let s=''; n++;
+    while(n){let r=(n-1)%26; s=String.fromCharCode(65+r)+s; n=Math.floor((n-1)/26);}
+    return s;
+  }
+  function rawCell(col0, row1){ // col 0-based, row 1-based (Excel)
+    const addr = colLetter(col0)+row1;
+    const cell = ws[addr];
+    return (cell && cell.v !== undefined && cell.v !== null) ? cell.v : null;
+  }
+
+  const services = [];
+  let totalCol = -1;
+  for(let c = 2; c <= 200; c += 3){
+    const raw = rawCell(c, 3); // Excel row 3 = service header row
+    if(raw === null) continue;
+    const name = String(raw).trim();
+    if(!name) continue;
+    if(name === 'รวม'){ totalCol = c; break; }
+    services.push({ name, col: c });
+  }
+
+  if(services.length === 0) throw new Error('ไม่พบข้อมูลบริการในไฟล์ — กรุณาตรวจสอบรูปแบบไฟล์ (ต้องมีหัวข้อบริการในแถวที่ 3)');
+  if(totalCol < 0) totalCol = services[services.length - 1].col + 3;
+
+  // Parse data rows
+  const records = [];
+  for(let i = 4; i < rows.length; i++){
+    const row = rows[i];
+    if(!row || row[0] === null || row[0] === undefined) continue;
+    const cellVal = String(row[0]).trim();
+    if(!cellVal || cellVal.startsWith('CUP')) continue;
+    const code = cellVal.substring(0, 5);
+    if(!/^\d{5}$/.test(code)) continue;
+    if(!VALID_CODES.has(code)) continue; // กรองเฉพาะ 99 รพ.สต.
+
+    const meta = HOSP_MAP[code];
+    const rec = {
+      code,
+      unit: cellVal,
+      name: meta ? meta.name : cellVal.substring(6).trim(),
+      size: meta ? meta.size : '',
+      district: meta ? meta.district : '',
+      population: parseNum(row[1]),
+      services: {}, svc_count: 0,
+      total_people: 0, total_times: 0, total_baht: 0
+    };
+
+    // อ่านค่าแต่ละบริการ
+    services.forEach(svc => {
+      const c = svc.col;
+      const p = parseNum(row[c]);
+      const t = parseNum(row[c + 1]);
+      const b = parseNum(row[c + 2]);
+      rec.services[svc.name] = { people: p, times: t, baht: b };
+      if(p > 0 || t > 0) rec.svc_count++;
+    });
+
+    // อ่าน total จาก col "รวม"
+    rec.total_people = parseNum(row[totalCol]);
+    rec.total_times  = parseNum(row[totalCol + 1]);
+    rec.total_baht   = parseNum(row[totalCol + 2]);
+
+    // fallback: คำนวณเองถ้า total ยังเป็น 0
+    if(!rec.total_people && !rec.total_times){
+      services.forEach(s => {
+        rec.total_people += rec.services[s.name].people;
+        rec.total_times  += rec.services[s.name].times;
+        rec.total_baht   += rec.services[s.name].baht;
+      });
+    }
+
+    records.push(rec);
+  }
+
+  if(records.length === 0) throw new Error('ไม่พบข้อมูล รพ.สต. ที่ตรงกับรายชื่อ 99 แห่ง — กรุณาตรวจสอบไฟล์');
+
+  DB = { dateStr, services: services.map(s => s.name), records };
+  document.getElementById('dateDisplay').textContent = '📅 ' + dateStr;
+  initFilterDropdowns();
+}
+
+function parseNum(v){
+  if(v===null||v===undefined||v==='')return 0;
+  const n=parseFloat(String(v).replace(/,/g,''));
+  return isNaN(n)?0:n;
+}
+
+// ═══ FILTER DROPDOWNS ═══
+function initFilterDropdowns(){
+  const dSel=document.getElementById('districtSel');
+  dSel.innerHTML='<option value="">— ทุกอำเภอ (14) —</option>';
+  const districts=[...new Set(HOSP_MASTER.map(h=>h.district))].sort();
+  districts.forEach(d=>{const o=document.createElement('option');o.value=d;o.textContent=d;dSel.appendChild(o);});
+  updateUnitDropdown();
+}
+
+function updateUnitDropdown(){
+  const uSel=document.getElementById('unitSel');
+  const prev=uSel.value;
+  uSel.innerHTML='<option value="">— ทุกหน่วย —</option>';
+  if(!DB)return;
+  const filtered=DB.records.filter(r=>{
+    if(sizeFilter!=='all'&&r.size!==sizeFilter)return false;
+    if(districtFilter&&r.district!==districtFilter)return false;
+    return true;
+  }).sort((a,b)=>a.name.localeCompare(b.name,'th'));
+  filtered.forEach(r=>{
+    const o=document.createElement('option');
+    o.value=r.code;
+    o.textContent=r.code+' '+r.name;
+    uSel.appendChild(o);
+  });
+  if(prev&&filtered.find(r=>r.code===prev))uSel.value=prev;
+  unitFilter=uSel.value;
+}
+
+function onDistrictChange(){districtFilter=document.getElementById('districtSel').value;unitFilter='';currentPage=1;updateUnitDropdown();renderAll();}
+function onUnitChange(){unitFilter=document.getElementById('unitSel').value;currentPage=1;renderAll();}
+
+function setSize(s,btn){
+  sizeFilter=s;currentPage=1;
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  updateUnitDropdown();renderAll();
+}
+function setMetric(m,btn){
+  metric=m;
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAll();
+}
+
+function getFiltered(){
+  if(!DB)return[];
+  return DB.records.filter(r=>{
+    if(sizeFilter!=='all'&&r.size!==sizeFilter)return false;
+    if(districtFilter&&r.district!==districtFilter)return false;
+    if(unitFilter&&r.code!==unitFilter)return false;
+    return true;
+  });
+}
+function getVal(r){return metric==='people'?r.total_people:metric==='times'?r.total_times:r.total_baht;}
+function getSvcVal(v){return metric==='people'?v.people:metric==='times'?v.times:v.baht;}
+function fmtN(n){return(n||0).toLocaleString('th-TH',{maximumFractionDigits:0});}
+function fmtB(n){return(n||0).toLocaleString('th-TH',{maximumFractionDigits:0})+' ฿';}
+
+// ═══ RENDER ALL ═══
+function renderAll(){
+  if(!DB)return;
+  const data=getFiltered();
+  renderKPI(data);
+  renderDistrictChart(data);
+  renderDoughnutChart(data);
+  renderTop15(data);
+  renderServiceGrid(data);
+  renderTable();
+}
+
+function renderKPI(data){
+  const pop=data.reduce((s,r)=>s+r.population,0);
+  const people=data.reduce((s,r)=>s+r.total_people,0);
+  const times=data.reduce((s,r)=>s+r.total_times,0);
+  const baht=data.reduce((s,r)=>s+r.total_baht,0);
+  document.getElementById('k-pop').textContent=fmtN(pop);
+  document.getElementById('k-people').textContent=fmtN(people);
+  document.getElementById('k-times').textContent=fmtN(times);
+  document.getElementById('k-baht').textContent=baht.toLocaleString('th-TH',{maximumFractionDigits:0})+' ฿';
+  document.getElementById('k-units').textContent=data.length+' / 99';
+  const active=new Set();
+  data.forEach(r=>Object.entries(r.services).forEach(([k,v])=>{if(getSvcVal(v)>0)active.add(k);}));
+  document.getElementById('k-svcs').textContent=active.size+' / '+DB.services.length;
+  const total=metric==='people'?people:metric==='times'?times:baht;
+  document.getElementById('k-avg').textContent=data.length?fmtN(Math.round(total/data.length)):'–';
+  document.getElementById('k-avg-lbl').textContent=metric==='baht'?'บาทต่อหน่วย':metric==='times'?'ครั้งต่อหน่วย':'คนต่อหน่วย';
+}
+
+function renderDistrictChart(data){
+  const m={};
+  data.forEach(r=>{const d=r.district||'ไม่ระบุ';m[d]=(m[d]||0)+getVal(r);});
+  const sorted=Object.entries(m).sort((a,b)=>b[1]-a[1]);
+  const ctx=document.getElementById('chartDistrict').getContext('2d');
+  if(chartD)chartD.destroy();
+  chartD=new Chart(ctx,{type:'bar',data:{labels:sorted.map(x=>x[0].replace('อำเภอ','')),datasets:[{data:sorted.map(x=>x[1]),backgroundColor:COLORS.slice(0,sorted.length),borderRadius:5}]},options:{plugins:{legend:{display:false}},scales:{y:{ticks:{font:{family:'Sarabun',size:10}}},x:{ticks:{font:{family:'Sarabun',size:10},maxRotation:35}}},responsive:true,maintainAspectRatio:false}});
+}
+
+function renderDoughnutChart(data){
+  const m={};
+  DB.services.forEach(s=>{m[s]=0;});
+  data.forEach(r=>Object.entries(r.services).forEach(([k,v])=>{if(m[k]!==undefined)m[k]+=getSvcVal(v);}));
+  const sorted=Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const ctx=document.getElementById('chartDoughnut').getContext('2d');
+  if(chartDo)chartDo.destroy();
+  chartDo=new Chart(ctx,{type:'doughnut',data:{labels:sorted.map(([k])=>SVC_SHORT[k]||k.substring(0,14)),datasets:[{data:sorted.map(x=>x[1]),backgroundColor:COLORS}]},options:{plugins:{legend:{position:'right',labels:{font:{family:'Sarabun',size:10},boxWidth:11,padding:6}}},responsive:true,maintainAspectRatio:false}});
+}
+
+function renderTop15(data){
+  const sorted=[...data].sort((a,b)=>getVal(b)-getVal(a)).slice(0,15);
+  const ctx=document.getElementById('chartTop15').getContext('2d');
+  if(chartT)chartT.destroy();
+  chartT=new Chart(ctx,{type:'bar',data:{labels:sorted.map(r=>r.name.substring(0,16)),datasets:[{data:sorted.map(r=>getVal(r)),backgroundColor:sorted.map((_,i)=>COLORS[i%COLORS.length]),borderRadius:5}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{font:{family:'Sarabun',size:10}}},y:{ticks:{font:{family:'Sarabun',size:10}}}},responsive:true,maintainAspectRatio:false}});
+}
+
+function renderServiceGrid(data){
+  const totals={};
+  DB.services.forEach(s=>{totals[s]={people:0,times:0,baht:0};});
+  data.forEach(r=>Object.entries(r.services).forEach(([k,v])=>{if(totals[k]){totals[k].people+=v.people;totals[k].times+=v.times;totals[k].baht+=v.baht;}}));
+  const maxVal=Math.max(...Object.values(totals).map(v=>getSvcVal(v)),1);
+  const grid=document.getElementById('serviceGrid');
+  grid.innerHTML=DB.services.map(s=>{
+    const v=totals[s];const pct=Math.round(getSvcVal(v)/maxVal*100);
+    return `<div class="svc-item">
+      <div class="svc-name">${s}</div>
+      <div class="svc-stats">
+        <div class="svc-stat"><div class="svc-stat-val">${fmtN(v.people)}</div><div class="svc-stat-lbl">คน</div></div>
+        <div class="svc-stat"><div class="svc-stat-val" style="color:#00A86B">${fmtN(v.times)}</div><div class="svc-stat-lbl">ครั้ง</div></div>
+        <div class="svc-stat"><div class="svc-stat-val" style="color:#F59E0B">${fmtN(v.baht)}</div><div class="svc-stat-lbl">บาท</div></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ═══ TABLE ═══
+function sortTable(col){
+  if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=-1;}
+  renderTable();
+}
+function renderTable(){
+  if(!DB)return;
+  const search=document.getElementById('tableSearch').value.toLowerCase();
+  let data=getFiltered().filter(r=>!search||r.name.toLowerCase().includes(search)||r.district.toLowerCase().includes(search)||r.code.includes(search));
+  // sort
+  data.sort((a,b)=>{
+    let va=a[sortCol]??0, vb=b[sortCol]??0;
+    if(typeof va==='string')return va.localeCompare(vb,'th')*sortDir;
+    return (va-vb)*sortDir;
+  });
+  const total=data.length;
+  const pages=Math.max(1,Math.ceil(total/PAGE_SIZE));
+  if(currentPage>pages)currentPage=1;
+  const slice=data.slice((currentPage-1)*PAGE_SIZE,currentPage*PAGE_SIZE);
+  const tbody=document.getElementById('tableBody');
+  tbody.innerHTML='';
+  // update sort arrows
+  document.querySelectorAll('thead th').forEach(th=>{th.classList.remove('sorted-asc','sorted-desc');});
+  const cols=['code','unit','size','district','population','total_people','total_times','total_baht','svc_count'];
+  const idx=cols.indexOf(sortCol);
+  if(idx>=0){const ths=document.querySelectorAll('thead th');if(ths[idx])ths[idx].classList.add(sortDir>0?'sorted-asc':'sorted-desc');}
+
+  slice.forEach(r=>{
+    const tr=document.createElement('tr');
+    if(selectedCode===r.code)tr.classList.add('selected');
+    tr.innerHTML=`<td>${r.code}</td><td>${r.name}</td><td><span class="badge badge-${r.size||'S'}">${r.size||'–'}</span></td><td>${r.district||'–'}</td><td>${fmtN(r.population)}</td><td><b style="color:#0077CC">${fmtN(r.total_people)}</b></td><td>${fmtN(r.total_times)}</td><td>${(r.total_baht||0).toLocaleString('th-TH',{maximumFractionDigits:0})}</td><td>${r.svc_count} บริการ</td>`;
+    tr.onclick=()=>openDetail(r);
+    tbody.appendChild(tr);
+  });
+  // pagination
+  const pag=document.getElementById('pagination');
+  pag.innerHTML=`<span>แสดง ${total===0?0:(currentPage-1)*PAGE_SIZE+1}–${Math.min(currentPage*PAGE_SIZE,total)} จาก ${total} หน่วย</span>`;
+  const maxP=Math.min(pages,7);
+  let start=Math.max(1,currentPage-3),end=Math.min(pages,start+maxP-1);
+  if(start>1){const b=document.createElement('button');b.textContent='«';b.onclick=()=>{currentPage=1;renderTable();};pag.appendChild(b);}
+  for(let i=start;i<=end;i++){const b=document.createElement('button');b.textContent=i;if(i===currentPage)b.classList.add('active');b.onclick=(p=>()=>{currentPage=p;renderTable();})(i);pag.appendChild(b);}
+  if(end<pages){const b=document.createElement('button');b.textContent='»';b.onclick=()=>{currentPage=pages;renderTable();};pag.appendChild(b);}
+}
+
+// ═══ DETAIL PANEL ═══
+function openDetail(r){
+  selectedCode=r.code;renderTable();
+  const panel=document.getElementById('detailPanel');
+  panel.classList.add('open');
+  document.getElementById('dName').textContent=r.code+' '+r.name;
+  document.getElementById('dMeta').textContent=`อำเภอ: ${r.district||'–'} · ขนาด: ${r.size||'–'} · ประชากร: ${fmtN(r.population)} คน`;
+  document.getElementById('dKpis').innerHTML=`
+    <div class="d-kpi"><div class="d-kpi-val">${fmtN(r.total_people)}</div><div class="d-kpi-lbl">คน</div></div>
+    <div class="d-kpi"><div class="d-kpi-val" style="color:#00A86B">${fmtN(r.total_times)}</div><div class="d-kpi-lbl">ครั้ง</div></div>
+    <div class="d-kpi"><div class="d-kpi-val" style="color:#F59E0B">${fmtN(r.total_baht||0)}</div><div class="d-kpi-lbl">บาท</div></div>`;
+  const top8=Object.entries(r.services).filter(([,v])=>v.people>0||v.times>0).sort((a,b)=>b[1].people-a[1].people).slice(0,8);
+  if(detailCh)detailCh.destroy();
+  detailCh=new Chart(document.getElementById('detailChart').getContext('2d'),{
+    type:'bar',
+    data:{labels:top8.map(([k])=>SVC_SHORT[k]||k.substring(0,10)),datasets:[{label:'คน',data:top8.map(([,v])=>v.people),backgroundColor:'#0077CC99',borderRadius:4},{label:'ครั้ง',data:top8.map(([,v])=>v.times),backgroundColor:'#00A86B99',borderRadius:4}]},
+    options:{plugins:{legend:{labels:{font:{family:'Sarabun',size:10},boxWidth:10}}},scales:{x:{ticks:{font:{family:'Sarabun',size:9}}},y:{ticks:{font:{family:'Sarabun',size:9}}}},responsive:true,maintainAspectRatio:false}
+  });
+  const list=document.getElementById('dSvcList');
+  const active=Object.entries(r.services).filter(([,v])=>getSvcVal(v)>0).sort((a,b)=>getSvcVal(b[1])-getSvcVal(a[1]));
+  list.innerHTML=active.length===0?'<div style="color:#94a3b8;font-size:12px;padding:8px 0">ไม่มีผลงาน</div>':active.map(([k,v])=>`<div class="d-svc-row"><div class="d-svc-name">${k}</div><div><div class="d-svc-vals">${fmtN(v.people)} คน</div><div class="d-svc-sub">${fmtN(v.times)} ครั้ง · ${fmtN(v.baht)} ฿</div></div></div>`).join('');
+}
+function closeDetail(){document.getElementById('detailPanel').classList.remove('open');selectedCode=null;renderTable();}
+
+// ═══ PDF EXPORT ═══
+async function exportPDF(){
+  const btn=document.getElementById('btnPDF');
+  btn.textContent='⏳ กำลังสร้าง PDF...'; btn.disabled=true;
+
+  // ── สร้าง off-screen wrapper สำหรับ render แต่ละหน้า ──
+  // วิธีนี้แก้ปัญหาภาษาไทย (ไม่ใช้ jsPDF text) และ scale ที่ถูกต้อง
+  // แต่ละหน้าจะ: สร้าง div ขนาด 1587x1123px (A4 landscape @96dpi) → html2canvas → addImage
+
+  const PDF_W_PX = 1587;  // A4 landscape width px @96dpi (297mm)
+  const PDF_H_PX = 1123;  // A4 landscape height px @96dpi (210mm)
+  const HEADER_H = 64;    // header px
+  const FOOTER_H = 36;    // footer px
+  const BODY_H   = PDF_H_PX - HEADER_H - FOOTER_H; // พื้นที่ content
+
+  // ── สร้าง HTML สำหรับ header (ภาษาไทย render ถูกต้อง) ──
+  function makeHeaderHTML(pageNum, totalPages){
+    const dateLabel = DB&&DB.dateStr ? 'ข้อมูล ณ วันที่ '+DB.dateStr : '';
+    return `<div style="width:${PDF_W_PX}px;height:${HEADER_H}px;background:linear-gradient(90deg,#00539C 0%,#0077CC 50%,#00A8E8 100%);display:flex;align-items:center;padding:0 28px;box-sizing:border-box;font-family:'Sarabun',sans-serif;">
+      <div style="flex:1;">
+        <div style="color:#fff;font-size:22px;font-weight:700;line-height:1.1;">🏥 PPFS Dashboard</div>
+        <div style="color:rgba(255,255,255,.85);font-size:13px;margin-top:2px;">วิเคราะห์ผลงานบริการส่งเสริมสุขภาพ 99 รพ.สต. · องค์การบริหารส่วนจังหวัดสุราษฎร์ธานี</div>
+      </div>
+      <div style="text-align:center;color:#fff;">
+        <div style="font-size:14px;font-weight:600;">${dateLabel}</div>
+      </div>
+      <div style="margin-left:28px;background:rgba(255,255,255,.2);border-radius:20px;padding:6px 18px;color:#fff;font-size:14px;font-weight:600;white-space:nowrap;">
+        หน้า ${pageNum} / ${totalPages}
+      </div>
+    </div>`;
+  }
+
+  function makeFooterHTML(){
+    return `<div style="width:${PDF_W_PX}px;height:${FOOTER_H}px;background:#f8fafc;border-top:2px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-family:'Sarabun',sans-serif;color:#64748b;font-size:12px;">
+      จัดทำโดย ฝ่ายบริการสาธารณสุข กองสาธารณสุข องค์การบริหารส่วนจังหวัดสุราษฎร์ธานี
+    </div>`;
+  }
+
+  // ── สร้าง off-screen container แล้ว screenshot เป็น 1 canvas ต่อหน้า ──
+  async function renderPage(contentEl, pageNum, totalPages, extraStyle=''){
+    const wrap = document.createElement('div');
+    wrap.style.cssText = `position:fixed;left:-9999px;top:0;width:${PDF_W_PX}px;background:#f0f4f8;z-index:-1;`;
+    wrap.innerHTML = makeHeaderHTML(pageNum, totalPages);
+
+    const body = document.createElement('div');
+    body.style.cssText = `width:${PDF_W_PX}px;min-height:${BODY_H}px;background:#f0f4f8;padding:12px 20px;box-sizing:border-box;overflow:hidden;${extraStyle}`;
+
+    // clone content ใส่ใน body
+    const clone = contentEl.cloneNode(true);
+    clone.style.cssText += ';margin:0 !important;';
+    body.appendChild(clone);
+    wrap.appendChild(body);
+    wrap.innerHTML += makeFooterHTML();
+    document.body.appendChild(wrap);
+
+    // รอ font โหลด
+    await document.fonts.ready;
+    await new Promise(r=>setTimeout(r,120));
+
+    const canvas = await html2canvas(wrap, {
+      scale: 1,
+      useCORS: true,
+      logging: false,
+      width: PDF_W_PX,
+      height: PDF_H_PX,
+      windowWidth: PDF_W_PX,
+      backgroundColor: '#f0f4f8'
+    });
+    document.body.removeChild(wrap);
+    return canvas;
+  }
+
+  // ── render หน้าที่มีหลาย elements (KPI + charts) ──
+  async function renderMultiPage(elements, pageNum, totalPages){
+    const wrap = document.createElement('div');
+    wrap.style.cssText = `position:fixed;left:-9999px;top:0;width:${PDF_W_PX}px;background:#f0f4f8;z-index:-1;`;
+    wrap.innerHTML = makeHeaderHTML(pageNum, totalPages);
+
+    const body = document.createElement('div');
+    body.style.cssText = `width:${PDF_W_PX}px;height:${BODY_H}px;background:#f0f4f8;padding:10px 20px 0 20px;box-sizing:border-box;overflow:hidden;`;
+
+    elements.forEach(({el, flex})=>{
+      const clone = el.cloneNode(true);
+      clone.style.cssText += `;flex:${flex||1};margin-bottom:8px;`;
+      body.appendChild(clone);
+    });
+    body.style.display='flex';
+    body.style.flexDirection='column';
+    wrap.appendChild(body);
+    wrap.innerHTML += makeFooterHTML();
+    document.body.appendChild(wrap);
+
+    await document.fonts.ready;
+    await new Promise(r=>setTimeout(r,150));
+
+    const canvas = await html2canvas(wrap, {
+      scale: 1, useCORS: true, logging: false,
+      width: PDF_W_PX, height: PDF_H_PX,
+      windowWidth: PDF_W_PX, backgroundColor: '#f0f4f8'
+    });
+    document.body.removeChild(wrap);
+    return canvas;
+  }
+
+  try{
+    const {jsPDF} = window.jspdf;
+
+    // ซ่อน detail panel
+    const dp = document.getElementById('detailPanel');
+    const wasOpen = dp.classList.contains('open');
+    dp.classList.remove('open');
+
+    // ซ่อน pagination
+    const elPag = document.getElementById('pagination');
+    elPag.style.display = 'none';
+
+    const TOTAL = 4;
+    const doc = new jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
+    const PW = doc.internal.pageSize.getWidth();
+    const PH = doc.internal.pageSize.getHeight();
+
+    // helper: canvas → addImage เต็มหน้า
+    function addFullPage(canvas){
+      doc.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG', 0, 0, PW, PH);
+    }
+
+    // ════ หน้า 1: KPI + กราฟ 2 ก้อน ════
+    btn.textContent='⏳ หน้า 1/4 KPI + กราฟ...';
+    const elKpi1   = document.querySelector('.kpi-grid');
+    const elKpi2   = document.querySelector('.kpi-grid2');
+    const elCharts = document.querySelector('.charts-grid');
+    if(!elKpi1||!elKpi2||!elCharts) throw new Error('ไม่พบ element KPI/Charts');
+    const pg1 = await renderMultiPage([
+      {el:elKpi1,  flex:'0 0 auto'},
+      {el:elKpi2,  flex:'0 0 auto'},
+      {el:elCharts,flex:'1'}
+    ], 1, TOTAL);
+    addFullPage(pg1);
+
+    // ════ หน้า 2: Top 15 ════
+    btn.textContent='⏳ หน้า 2/4 Top 15...';
+    doc.addPage();
+    const cardTop15 = document.getElementById('chartTop15').closest('.chart-card') || document.getElementById('chartTop15').parentElement;
+    if(!cardTop15) throw new Error('ไม่พบ element Top15 card');
+    const pg2 = await renderPage(cardTop15, 2, TOTAL, 'display:flex;align-items:center;justify-content:center;');
+    addFullPage(pg2);
+
+    // ════ หน้า 3: Service Grid ════
+    btn.textContent='⏳ หน้า 3/4 ผลงานรายบริการ...';
+    doc.addPage();
+    const elSvc = document.getElementById('serviceGrid');
+    if(!elSvc) throw new Error('ไม่พบ element serviceGrid');
+    const pg3 = await renderPage(elSvc, 3, TOTAL);
+    addFullPage(pg3);
+
+    // ════ หน้า 4: ตาราง ════
+    btn.textContent='⏳ หน้า 4/4 ตาราง...';
+    doc.addPage();
+    const elTable = document.querySelector('.table-card');
+    if(!elTable) throw new Error('ไม่พบ element .table-card');
+    const pg4 = await renderPage(elTable, 4, TOTAL);
+    addFullPage(pg4);
+
+    // คืนค่า
+    elPag.style.display = '';
+    if(wasOpen) dp.classList.add('open');
+
+    const safeDate = (DB&&DB.dateStr) ? DB.dateStr.replace(/[\/\\\s:]/g,'_') : 'export';
+    doc.save('PPFS_Report_'+safeDate+'.pdf');
+
+  }catch(err){
+    alert('เกิดข้อผิดพลาด: '+err.message);
+    console.error(err);
+    document.getElementById('pagination').style.display='';
+  }
+  btn.textContent='📄 ดาวน์โหลด PDF'; btn.disabled=false;
+}
+</script>
+</body>
+</html>
