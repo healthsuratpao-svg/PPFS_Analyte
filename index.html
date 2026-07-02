@@ -211,11 +211,48 @@ tbody td{padding:7px 9px;color:#374151;}
       <button onclick="setMetric('baht',this)">💰 บาท</button>
     </div>
   </div>
+  <div class="filter-group">
+    <span class="filter-label">🏆 จัดอันดับตามบริการ:</span>
+    <select id="serviceSel" onchange="onServiceChange()" style="min-width:200px;"><option value="">— ภาพรวมทั้งหมด —</option></select>
+  </div>
   <button class="btn-pdf" id="btnPDF" onclick="exportPDF()">📄 ดาวน์โหลด PDF</button>
 </div>
 
 <div class="main">
 <div class="content" id="mainContent">
+
+  <!-- ═══ RANKING MODE (เมื่อเลือกบริการเพื่อจัดอันดับ) ═══ -->
+  <div class="chart-card full" id="rankSection" style="display:none;margin-bottom:16px;">
+    <div class="chart-title" id="rankTitle">🏆 จัดอันดับหน่วยบริการ</div>
+    <div class="kpi-grid" id="rankKpis" style="margin-bottom:16px;"></div>
+    <div style="position:relative;" id="rankChartWrap"><canvas id="chartRank"></canvas></div>
+  </div>
+  <div class="table-card" id="rankTableCard" style="display:none;margin-bottom:16px;">
+    <div class="table-header">
+      <div class="chart-title" style="margin:0;" id="rankTableTitle">📋 อันดับหน่วยบริการ (เรียงจากมากไปน้อย)</div>
+      <input class="table-search" id="rankSearch" placeholder="🔍 ค้นหาชื่อ รพ.สต..." oninput="renderRankTable()">
+    </div>
+    <div class="tbl-wrap">
+    <table id="rankTable">
+      <thead>
+        <tr>
+          <th>อันดับ</th>
+          <th onclick="sortRankTable('code')">รหัส</th>
+          <th onclick="sortRankTable('name')">หน่วยบริการ</th>
+          <th onclick="sortRankTable('size')">ขนาด</th>
+          <th onclick="sortRankTable('district')">อำเภอ</th>
+          <th onclick="sortRankTable('people')">คน</th>
+          <th onclick="sortRankTable('times')">ครั้ง</th>
+          <th onclick="sortRankTable('baht')">บาท</th>
+        </tr>
+      </thead>
+      <tbody id="rankTableBody"></tbody>
+    </table>
+    </div>
+  </div>
+
+  <!-- ═══ OVERVIEW MODE (ค่าเริ่มต้น) ═══ -->
+  <div id="overviewSections">
 
   <div class="kpi-grid">
     <div class="kpi-card"><div class="kpi-icon">👥</div><div class="kpi-label">ประชากรรวม</div><div class="kpi-value" id="k-pop">–</div><div class="kpi-sub">ราษฎรทะเบียนบ้าน</div></div>
@@ -254,7 +291,7 @@ tbody td{padding:7px 9px;color:#374151;}
       <input class="table-search" id="tableSearch" placeholder="🔍 ค้นหาชื่อ รพ.สต..." oninput="currentPage=1;renderTable()">
     </div>
     <div class="tbl-wrap">
-    <table>
+    <table id="mainTable">
       <thead>
         <tr>
           <th onclick="sortTable('code')">รหัส</th>
@@ -273,6 +310,8 @@ tbody td{padding:7px 9px;color:#374151;}
     </div>
     <div class="pagination" id="pagination"></div>
   </div>
+
+  </div><!-- end #overviewSections -->
 
 </div><!-- end .content -->
 
@@ -336,7 +375,10 @@ const PAGE_SIZE = 20;
 let selectedCode = null;
 let sortCol = 'total_people';
 let sortDir = -1;
-let chartD=null, chartDo=null, chartT=null, detailCh=null;
+let serviceFilter = '';
+let rankSortCol = 'people';
+let rankSortDir = -1;
+let chartD=null, chartDo=null, chartT=null, detailCh=null, chartRank=null;
 
 // ═══ UPLOAD HANDLING ═══
 function showUpload(){
@@ -491,6 +533,28 @@ function initFilterDropdowns(){
   const districts=[...new Set(HOSP_MASTER.map(h=>h.district))].sort();
   districts.forEach(d=>{const o=document.createElement('option');o.value=d;o.textContent=d;dSel.appendChild(o);});
   updateUnitDropdown();
+  updateServiceDropdown();
+}
+
+function updateServiceDropdown(){
+  const sSel=document.getElementById('serviceSel');
+  sSel.innerHTML='<option value="">— ภาพรวมทั้งหมด —</option>';
+  if(!DB)return;
+  DB.services.forEach(s=>{
+    const o=document.createElement('option');
+    o.value=s;
+    o.textContent=SVC_SHORT[s]||s;
+    sSel.appendChild(o);
+  });
+  serviceFilter='';
+  sSel.value='';
+}
+
+function onServiceChange(){
+  serviceFilter=document.getElementById('serviceSel').value;
+  currentPage=1;
+  rankSortCol=metric;rankSortDir=-1;
+  renderAll();
 }
 
 function updateUnitDropdown(){
@@ -526,6 +590,7 @@ function setMetric(m,btn){
   metric=m;
   btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
+  rankSortCol=m;rankSortDir=-1;
   renderAll();
 }
 
@@ -547,12 +612,105 @@ function fmtB(n){return(n||0).toLocaleString('th-TH',{maximumFractionDigits:0})+
 function renderAll(){
   if(!DB)return;
   const data=getFiltered();
-  renderKPI(data);
-  renderDistrictChart(data);
-  renderDoughnutChart(data);
-  renderTop15(data);
-  renderServiceGrid(data);
-  renderTable();
+  const isRank = !!serviceFilter;
+  document.getElementById('overviewSections').style.display = isRank ? 'none' : 'block';
+  document.getElementById('rankSection').style.display = isRank ? 'block' : 'none';
+  document.getElementById('rankTableCard').style.display = isRank ? 'block' : 'none';
+  if(isRank){
+    renderRankKPI(data);
+    renderRankChart(data);
+    renderRankTable();
+  }else{
+    renderKPI(data);
+    renderDistrictChart(data);
+    renderDoughnutChart(data);
+    renderTop15(data);
+    renderServiceGrid(data);
+    renderTable();
+  }
+}
+
+// ═══ RANKING MODE (จัดอันดับตามบริการที่เลือก) ═══
+function renderRankKPI(data){
+  let people=0,times=0,baht=0,units=0;
+  data.forEach(r=>{
+    const v=r.services[serviceFilter];
+    if(v){
+      people+=v.people; times+=v.times; baht+=v.baht;
+      if(v.people>0||v.times>0)units++;
+    }
+  });
+  const label=SVC_SHORT[serviceFilter]||serviceFilter;
+  document.getElementById('rankTitle').textContent='🏆 จัดอันดับหน่วยบริการ – '+label;
+  document.getElementById('rankTableTitle').textContent='📋 อันดับหน่วยบริการ – '+label+' (เรียงจากมากไปน้อย)';
+  document.getElementById('rankKpis').innerHTML=`
+    <div class="kpi-card"><div class="kpi-icon">👤</div><div class="kpi-label">ผู้รับบริการ</div><div class="kpi-value">${fmtN(people)}</div><div class="kpi-sub">คน</div></div>
+    <div class="kpi-card c2"><div class="kpi-icon">📋</div><div class="kpi-label">จำนวนครั้ง</div><div class="kpi-value">${fmtN(times)}</div><div class="kpi-sub">ครั้ง</div></div>
+    <div class="kpi-card c3"><div class="kpi-icon">💰</div><div class="kpi-label">ค่าชดเชย</div><div class="kpi-value">${(baht||0).toLocaleString('th-TH',{maximumFractionDigits:0})} ฿</div><div class="kpi-sub">บาท</div></div>
+    <div class="kpi-card c4"><div class="kpi-icon">✅</div><div class="kpi-label">หน่วยที่มีผลงาน</div><div class="kpi-value">${units} / ${data.length}</div><div class="kpi-sub">รพ.สต.</div></div>`;
+}
+
+function renderRankChart(data){
+  const chartDir = (rankSortCol==='people'||rankSortCol==='times'||rankSortCol==='baht') ? rankSortDir : -1;
+  const chartCol = (rankSortCol==='people'||rankSortCol==='times'||rankSortCol==='baht') ? rankSortCol : metric;
+  const rows=data.map(r=>{
+    const v=r.services[serviceFilter]||{people:0,times:0,baht:0};
+    return {code:r.code,name:r.name,val:v[chartCol]||0};
+  }).sort((a,b)=>(a.val-b.val)*chartDir);
+  const canvas=document.getElementById('chartRank');
+  const h=Math.max(320, rows.length*22);
+  document.getElementById('rankChartWrap').style.height=h+'px';
+  const metricLbl=chartCol==='baht'?'บาท':chartCol==='times'?'ครั้ง':'คน';
+  if(chartRank)chartRank.destroy();
+  chartRank=new Chart(canvas.getContext('2d'),{
+    type:'bar',
+    data:{labels:rows.map(r=>r.code+' '+r.name.substring(0,22)),datasets:[{label:metricLbl,data:rows.map(r=>r.val),backgroundColor:rows.map((_,i)=>COLORS[i%COLORS.length]),borderRadius:4}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{font:{family:'Sarabun',size:10}}},y:{ticks:{font:{family:'Sarabun',size:10}}}},responsive:true,maintainAspectRatio:false}
+  });
+}
+
+function sortRankTable(col){
+  if(rankSortCol===col)rankSortDir*=-1;else{rankSortCol=col;rankSortDir=-1;}
+  if(col==='people'||col==='times'||col==='baht'){
+    metric=col;
+    document.querySelectorAll('#metricToggle button').forEach(b=>b.classList.remove('active'));
+    const idxMap={people:0,times:1,baht:2};
+    const btns=document.querySelectorAll('#metricToggle button');
+    if(btns[idxMap[col]])btns[idxMap[col]].classList.add('active');
+  }
+  renderRankChart(getFiltered());
+  renderRankTable();
+}
+
+function renderRankTable(){
+  if(!DB)return;
+  const search=(document.getElementById('rankSearch').value||'').toLowerCase();
+  let rows=getFiltered().map(r=>({r,v:r.services[serviceFilter]||{people:0,times:0,baht:0}}))
+    .filter(x=>!search||x.r.name.toLowerCase().includes(search)||x.r.district.toLowerCase().includes(search)||x.r.code.includes(search));
+  rows.sort((a,b)=>{
+    let va,vb;
+    if(rankSortCol==='code'){va=a.r.code;vb=b.r.code;}
+    else if(rankSortCol==='name'){va=a.r.name;vb=b.r.name;}
+    else if(rankSortCol==='size'){va=a.r.size;vb=b.r.size;}
+    else if(rankSortCol==='district'){va=a.r.district;vb=b.r.district;}
+    else{va=a.v[rankSortCol]||0;vb=b.v[rankSortCol]||0;}
+    if(typeof va==='string')return va.localeCompare(vb,'th')*rankSortDir;
+    return (va-vb)*rankSortDir;
+  });
+  // update sort arrows
+  document.querySelectorAll('#rankTable thead th').forEach(th=>th.classList.remove('sorted-asc','sorted-desc'));
+  const cols=['','code','name','size','district','people','times','baht'];
+  const idx=cols.indexOf(rankSortCol);
+  if(idx>=0){const ths=document.querySelectorAll('#rankTable thead th');if(ths[idx])ths[idx].classList.add(rankSortDir>0?'sorted-asc':'sorted-desc');}
+  const tbody=document.getElementById('rankTableBody');
+  const isTopRank=(rankSortCol==='people'||rankSortCol==='times'||rankSortCol==='baht')&&rankSortDir===-1;
+  tbody.innerHTML=rows.length===0?'<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:16px;">ไม่พบข้อมูล</td></tr>':rows.map((x,i)=>{
+    let medal='';
+    if(isTopRank){
+      if(i===0)medal='🥇 ';else if(i===1)medal='🥈 ';else if(i===2)medal='🥉 ';
+    }
+    return `<tr><td><b>${medal}${i+1}</b></td><td>${x.r.code}</td><td>${x.r.name}</td><td><span class="badge badge-${x.r.size||'S'}">${x.r.size||'–'}</span></td><td>${x.r.district||'–'}</td><td><b style="color:#0077CC">${fmtN(x.v.people)}</b></td><td>${fmtN(x.v.times)}</td><td>${(x.v.baht||0).toLocaleString('th-TH',{maximumFractionDigits:0})}</td></tr>`;
+  }).join('');
 }
 
 function renderKPI(data){
@@ -641,10 +799,10 @@ function renderTable(){
   const tbody=document.getElementById('tableBody');
   tbody.innerHTML='';
   // update sort arrows
-  document.querySelectorAll('thead th').forEach(th=>{th.classList.remove('sorted-asc','sorted-desc');});
+  document.querySelectorAll('#mainTable thead th').forEach(th=>{th.classList.remove('sorted-asc','sorted-desc');});
   const cols=['code','unit','size','district','population','total_people','total_times','total_baht','svc_count'];
   const idx=cols.indexOf(sortCol);
-  if(idx>=0){const ths=document.querySelectorAll('thead th');if(ths[idx])ths[idx].classList.add(sortDir>0?'sorted-asc':'sorted-desc');}
+  if(idx>=0){const ths=document.querySelectorAll('#mainTable thead th');if(ths[idx])ths[idx].classList.add(sortDir>0?'sorted-asc':'sorted-desc');}
 
   slice.forEach(r=>{
     const tr=document.createElement('tr');
