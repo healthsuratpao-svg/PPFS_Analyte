@@ -57,6 +57,21 @@ select:focus{border-color:#0077CC;}
 .btn-pdf:hover{background:#c53030;}
 .btn-pdf:disabled{opacity:.6;cursor:not-allowed;}
 
+/* ─── CHART DOWNLOAD BUTTON ─── */
+.btn-dl-chart{margin-left:auto;background:#eff6ff;border:1.5px solid #bfdbfe;color:#0077CC;width:26px;height:26px;border-radius:7px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,border-color .15s;}
+.btn-dl-chart:hover{background:#dbeafe;border-color:#93c5fd;}
+.btn-dl-chart:active{transform:translateY(1px);}
+
+/* ─── CSV EXPORT BUTTON ─── */
+.btn-csv{background:#ecfdf5;border:1.5px solid #a7f3d0;color:#047857;padding:6px 12px;border-radius:8px;font-family:'Sarabun',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;flex-shrink:0;transition:background .15s,border-color .15s;}
+.btn-csv:hover{background:#d1fae5;border-color:#6ee7b7;}
+.btn-csv:active{transform:translateY(1px);}
+
+/* ─── PDF CAPTURE MODE: ซ่อนปุ่ม/อินพุตที่ไม่ต้องการให้ติดไปในรูปที่แคป ─── */
+body.pdf-capturing .btn-dl-chart,
+body.pdf-capturing .btn-csv,
+body.pdf-capturing .table-search{display:none !important;}
+
 /* ─── MAIN ─── */
 .main{display:flex;min-height:calc(100vh - 110px);}
 .content{flex:1;padding:18px 22px;overflow:auto;min-width:0;}
@@ -223,14 +238,17 @@ tbody td{padding:7px 9px;color:#374151;}
 
   <!-- ═══ RANKING MODE (เมื่อเลือกบริการเพื่อจัดอันดับ) ═══ -->
   <div class="chart-card full" id="rankSection" style="display:none;margin-bottom:16px;">
-    <div class="chart-title" id="rankTitle">🏆 จัดอันดับหน่วยบริการ</div>
+    <div class="chart-title" id="rankTitle"><span id="rankTitleText">🏆 จัดอันดับหน่วยบริการ</span><button class="btn-dl-chart" title="ดาวน์โหลดกราฟเป็นรูปภาพ" onclick="downloadChartImage('chartRank','จัดอันดับหน่วยบริการ')">📥</button></div>
     <div class="kpi-grid" id="rankKpis" style="margin-bottom:16px;"></div>
     <div style="position:relative;" id="rankChartWrap"><canvas id="chartRank"></canvas></div>
   </div>
   <div class="table-card" id="rankTableCard" style="display:none;margin-bottom:16px;">
     <div class="table-header">
       <div class="chart-title" style="margin:0;" id="rankTableTitle">📋 อันดับหน่วยบริการ (เรียงจากมากไปน้อย)</div>
-      <input class="table-search" id="rankSearch" placeholder="🔍 ค้นหาชื่อ รพ.สต..." oninput="renderRankTable()">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <input class="table-search" id="rankSearch" placeholder="🔍 ค้นหาชื่อ รพ.สต..." oninput="renderRankTable()">
+        <button class="btn-csv" title="ส่งออกตารางนี้เป็น CSV" onclick="exportRankTableCSV()">⬇️ CSV</button>
+      </div>
     </div>
     <div class="tbl-wrap">
     <table id="rankTable">
@@ -268,17 +286,17 @@ tbody td{padding:7px 9px;color:#374151;}
 
   <div class="charts-grid">
     <div class="chart-card">
-      <div class="chart-title">📊 ผลงานรายอำเภอ</div>
+      <div class="chart-title">📊 ผลงานรายอำเภอ<button class="btn-dl-chart" title="ดาวน์โหลดกราฟเป็นรูปภาพ" onclick="downloadChartImage('chartDistrict','ผลงานรายอำเภอ')">📥</button></div>
       <div style="height:260px;position:relative;"><canvas id="chartDistrict"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-title">🍩 สัดส่วน Top 10 บริการ</div>
+      <div class="chart-title">🍩 สัดส่วน Top 10 บริการ<button class="btn-dl-chart" title="ดาวน์โหลดกราฟเป็นรูปภาพ" onclick="downloadChartImage('chartDoughnut','สัดส่วน_Top10_บริการ')">📥</button></div>
       <div style="height:260px;position:relative;"><canvas id="chartDoughnut"></canvas></div>
     </div>
   </div>
 
   <div class="chart-card full" style="margin-bottom:16px;">
-    <div class="chart-title">🏆 Top 15 รพ.สต. ผลงานสูงสุด</div>
+    <div class="chart-title">🏆 Top 15 รพ.สต. ผลงานสูงสุด<button class="btn-dl-chart" title="ดาวน์โหลดกราฟเป็นรูปภาพ" onclick="downloadChartImage('chartTop15','Top15_รพสต_ผลงานสูงสุด')">📥</button></div>
     <div style="height:290px;position:relative;"><canvas id="chartTop15"></canvas></div>
   </div>
 
@@ -288,7 +306,10 @@ tbody td{padding:7px 9px;color:#374151;}
   <div class="table-card">
     <div class="table-header">
       <div class="chart-title" style="margin:0;">📋 รายละเอียดรายหน่วยบริการ <span style="font-weight:400;color:#94a3b8;font-size:11px;">(คลิกแถวเพื่อดูรายละเอียด)</span></div>
-      <input class="table-search" id="tableSearch" placeholder="🔍 ค้นหาชื่อ รพ.สต..." oninput="currentPage=1;renderTable()">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <input class="table-search" id="tableSearch" placeholder="🔍 ค้นหาชื่อ รพ.สต..." oninput="currentPage=1;renderTable()">
+        <button class="btn-csv" title="ส่งออกตารางนี้เป็น CSV" onclick="exportMainTableCSV()">⬇️ CSV</button>
+      </div>
     </div>
     <div class="tbl-wrap">
     <table id="mainTable">
@@ -320,7 +341,7 @@ tbody td{padding:7px 9px;color:#374151;}
   <div class="detail-name" id="dName">–</div>
   <div class="detail-meta" id="dMeta">–</div>
   <div class="d-kpis" id="dKpis"></div>
-  <div class="chart-title" style="font-size:12px;">📊 คน / ครั้ง (Top 8 บริการ)</div>
+  <div class="chart-title" style="font-size:12px;">📊 คน / ครั้ง (Top 8 บริการ)<button class="btn-dl-chart" style="width:22px;height:22px;font-size:11px;" title="ดาวน์โหลดกราฟเป็นรูปภาพ" onclick="downloadChartImage('detailChart','รายละเอียด_คน_ครั้ง')">📥</button></div>
   <div class="detail-chart-wrap"><canvas id="detailChart"></canvas></div>
   <div class="chart-title" style="font-size:12px;margin-top:4px;margin-bottom:8px;">🔬 รายการบริการที่มีผลงาน</div>
   <div id="dSvcList"></div>
@@ -379,6 +400,129 @@ let serviceFilter = '';
 let rankSortCol = 'people';
 let rankSortDir = -1;
 let chartD=null, chartDo=null, chartT=null, detailCh=null, chartRank=null;
+
+// ── ดาวน์โหลดกราฟเป็นรูปภาพ (PNG) พร้อมชื่อกราฟ/คำอธิบาย/เกณฑ์ที่ใช้กรอง ──
+const CHART_META = {
+  chartDistrict:{title:'📊 ผลงานรายอำเภอ', desc:'เปรียบเทียบผลงานสะสมของแต่ละอำเภอ ตามเกณฑ์ที่เลือก'},
+  chartDoughnut:{title:'🍩 สัดส่วน Top 10 บริการ', desc:'สัดส่วนผลงาน 10 บริการที่มีผลงานสูงสุด เทียบตามเกณฑ์ที่เลือก'},
+  chartTop15:{title:'🏆 Top 15 รพ.สต. ผลงานสูงสุด', desc:'จัดอันดับ รพ.สต. 15 อันดับแรกที่มีผลงานสูงสุด ตามเกณฑ์ที่เลือก'},
+  chartRank:{title:null, desc:'จัดอันดับหน่วยบริการตามบริการที่เลือก เรียงจากมากไปน้อย'},
+  detailChart:{title:'📊 คน / ครั้ง (Top 8 บริการ)', desc:'เปรียบเทียบจำนวนคนและจำนวนครั้งของ 8 บริการอันดับแรก สำหรับหน่วยบริการที่เลือก'}
+};
+
+function getChartTitle(canvasId){
+  if(canvasId==='chartRank'){
+    const el=document.getElementById('rankTitleText');
+    return el ? el.textContent : CHART_META.chartRank.title || '🏆 จัดอันดับหน่วยบริการ';
+  }
+  if(canvasId==='detailChart'){
+    const el=document.getElementById('dName');
+    return CHART_META.detailChart.title + (el && el.textContent!=='–' ? ' – '+el.textContent : '');
+  }
+  return (CHART_META[canvasId]&&CHART_META[canvasId].title) || 'กราฟ';
+}
+
+function getChartContextLines(canvasId){
+  const metricLabel=({people:'คน',times:'ครั้ง',baht:'บาท'})[metric]||metric;
+  const dateLine=(typeof DB!=='undefined'&&DB&&DB.dateStr)?'ข้อมูล ณ วันที่ '+DB.dateStr:'';
+  const desc=(CHART_META[canvasId]&&CHART_META[canvasId].desc)||'';
+  let filterParts=[];
+
+  if(canvasId==='detailChart'){
+    const el=document.getElementById('dMeta');
+    if(el&&el.textContent!=='–') filterParts.push(el.textContent);
+  }else if(canvasId==='chartRank'){
+    filterParts.push('ขนาด: '+(sizeFilter==='all'?'ทุกขนาด':sizeFilter));
+    if(districtFilter) filterParts.push('อำเภอ: '+districtFilter);
+  }else{
+    filterParts.push('เกณฑ์: '+metricLabel);
+    filterParts.push('ขนาด: '+(sizeFilter==='all'?'ทุกขนาด':sizeFilter));
+    filterParts.push('อำเภอ: '+(districtFilter||'ทุกอำเภอ'));
+  }
+  if(dateLine) filterParts.push(dateLine);
+
+  return [desc, filterParts.join('   ·   ')].filter(Boolean);
+}
+
+async function downloadChartImage(canvasId, filenameSlug){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas){ alert('ไม่พบกราฟที่ต้องการดาวน์โหลด'); return; }
+  const chartInstance=Chart.getChart(canvas);
+  if(!chartInstance){ alert('กราฟยังไม่พร้อมสำหรับดาวน์โหลด'); return; }
+
+  await document.fonts.ready;
+
+  const src=chartInstance.canvas;
+  const dpr=src.width/src.clientWidth||1;
+  const PAD=20*dpr;
+  const titleText=getChartTitle(canvasId);
+  const lines=getChartContextLines(canvasId);
+  const titleFontSize=20*dpr, lineFontSize=13*dpr, lineGap=20*dpr;
+  const headerH=PAD+titleFontSize+8*dpr+lines.length*lineGap+10*dpr;
+  const footerH=34*dpr;
+
+  const W=src.width+PAD*2;
+  const H=headerH+src.height+footerH;
+
+  const tmp=document.createElement('canvas');
+  tmp.width=W; tmp.height=H;
+  const ctx=tmp.getContext('2d');
+
+  // พื้นหลัง
+  ctx.fillStyle='#ffffff';
+  ctx.fillRect(0,0,W,H);
+
+  // แถบสีด้านบน (แบรนด์)
+  const grad=ctx.createLinearGradient(0,0,W,0);
+  grad.addColorStop(0,'#00539C'); grad.addColorStop(0.6,'#0077CC'); grad.addColorStop(1,'#00A8E8');
+  ctx.fillStyle=grad;
+  ctx.fillRect(0,0,W,4*dpr);
+
+  // ชื่อกราฟ
+  ctx.fillStyle='#1e2d3d';
+  ctx.font=`700 ${titleFontSize}px 'Sarabun', sans-serif`;
+  ctx.textBaseline='top';
+  ctx.fillText(titleText, PAD, PAD+2*dpr);
+
+  // รายละเอียด/บริบทการกรอง
+  ctx.font=`400 ${lineFontSize}px 'Sarabun', sans-serif`;
+  ctx.fillStyle='#64748b';
+  let ly=PAD+titleFontSize+10*dpr;
+  lines.forEach(line=>{
+    ctx.fillText(line, PAD, ly);
+    ly+=lineGap;
+  });
+
+  // เส้นคั่น
+  ctx.strokeStyle='#e2e8f0';
+  ctx.lineWidth=1*dpr;
+  ctx.beginPath();
+  ctx.moveTo(PAD, headerH-6*dpr);
+  ctx.lineTo(W-PAD, headerH-6*dpr);
+  ctx.stroke();
+
+  // วาดกราฟ
+  ctx.drawImage(src, PAD, headerH);
+
+  // ท้ายภาพ
+  ctx.font=`400 ${11*dpr}px 'Sarabun', sans-serif`;
+  ctx.fillStyle='#94a3b8';
+  ctx.textAlign='center';
+  const now=new Date();
+  const genStr='สร้างเมื่อ '+now.toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'});
+  ctx.fillText('จัดทำโดย ฝ่ายบริการสาธารณสุข กองสาธารณสุข องค์การบริหารส่วนจังหวัดสุราษฎร์ธานี  ·  '+genStr, W/2, headerH+src.height+10*dpr);
+  ctx.textAlign='left';
+
+  const dataUrl=tmp.toDataURL('image/png',1.0);
+  const safeName=(filenameSlug||'chart').replace(/[\/\\\s:]/g,'_');
+  const dateStr=(typeof DB!=='undefined'&&DB&&DB.dateStr)?'_'+DB.dateStr.replace(/[\/\\\s:]/g,'_'):'';
+  const link=document.createElement('a');
+  link.href=dataUrl;
+  link.download=safeName+dateStr+'.png';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 
 // ═══ UPLOAD HANDLING ═══
 function showUpload(){
@@ -641,7 +785,7 @@ function renderRankKPI(data){
     }
   });
   const label=SVC_SHORT[serviceFilter]||serviceFilter;
-  document.getElementById('rankTitle').textContent='🏆 จัดอันดับหน่วยบริการ – '+label;
+  document.getElementById('rankTitleText').textContent='🏆 จัดอันดับหน่วยบริการ – '+label;
   document.getElementById('rankTableTitle').textContent='📋 อันดับหน่วยบริการ – '+label+' (เรียงจากมากไปน้อย)';
   document.getElementById('rankKpis').innerHTML=`
     <div class="kpi-card"><div class="kpi-icon">👤</div><div class="kpi-label">ผู้รับบริการ</div><div class="kpi-value">${fmtN(people)}</div><div class="kpi-sub">คน</div></div>
@@ -778,20 +922,86 @@ function renderServiceGrid(data){
 }
 
 // ═══ TABLE ═══
+// ── ยูทิลิตี้ทั่วไปสำหรับส่งออก CSV ──
+function csvEscape(val){
+  const s = String(val ?? '');
+  if(/[",\n\r]/.test(s)){
+    return '"'+s.replace(/"/g,'""')+'"';
+  }
+  return s;
+}
+
+function downloadCSV(rows, headers, filenameSlug){
+  const lines=[headers.map(csvEscape).join(',')];
+  rows.forEach(r=>lines.push(r.map(csvEscape).join(',')));
+  // ใส่ BOM (\uFEFF) เพื่อให้ Excel เปิดภาษาไทยได้ถูกต้อง
+  const csvContent='\uFEFF'+lines.join('\r\n');
+  const blob=new Blob([csvContent],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const dateStr=(typeof DB!=='undefined'&&DB&&DB.dateStr)?'_'+DB.dateStr.replace(/[\/\\\s:]/g,'_'):'';
+  const safeName=(filenameSlug||'export').replace(/[\/\\\s:]/g,'_');
+  const link=document.createElement('a');
+  link.href=url;
+  link.download=safeName+dateStr+'.csv';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+// ── ส่งออกตาราง "รายละเอียดรายหน่วยบริการ" (ทุกแถวที่ตรงกับตัวกรอง/คำค้นหา ไม่ใช่แค่หน้าที่แสดง) ──
+function exportMainTableCSV(){
+  if(!DB){ alert('ยังไม่มีข้อมูล'); return; }
+  const data=getMainTableSortedFilteredData();
+  const headers=['รหัส','หน่วยบริการ','ขนาด','อำเภอ','ประชากร','คน','ครั้ง','บาท','บริการที่มีผลงาน'];
+  const rows=data.map(r=>[r.code, r.name, r.size||'–', r.district||'–', r.population, r.total_people, r.total_times, r.total_baht||0, r.svc_count]);
+  downloadCSV(rows, headers, 'PPFS_รายละเอียดรายหน่วยบริการ');
+}
+
+// ── ส่งออกตาราง "จัดอันดับหน่วยบริการ" (โหมด Ranking ตามบริการที่เลือก) ──
+function exportRankTableCSV(){
+  if(!DB){ alert('ยังไม่มีข้อมูล'); return; }
+  const search=(document.getElementById('rankSearch').value||'').toLowerCase();
+  let rows=getFiltered().map(r=>({r,v:r.services[serviceFilter]||{people:0,times:0,baht:0}}))
+    .filter(x=>!search||x.r.name.toLowerCase().includes(search)||x.r.district.toLowerCase().includes(search)||x.r.code.includes(search));
+  rows.sort((a,b)=>{
+    let va,vb;
+    if(rankSortCol==='code'){va=a.r.code;vb=b.r.code;}
+    else if(rankSortCol==='name'){va=a.r.name;vb=b.r.name;}
+    else if(rankSortCol==='size'){va=a.r.size;vb=b.r.size;}
+    else if(rankSortCol==='district'){va=a.r.district;vb=b.r.district;}
+    else{va=a.v[rankSortCol]||0;vb=b.v[rankSortCol]||0;}
+    if(typeof va==='string')return va.localeCompare(vb,'th')*rankSortDir;
+    return (va-vb)*rankSortDir;
+  });
+  const label=SVC_SHORT[serviceFilter]||serviceFilter||'ทุกบริการ';
+  const headers=['อันดับ','รหัส','หน่วยบริการ','ขนาด','อำเภอ','คน','ครั้ง','บาท'];
+  const dataRows=rows.map((x,i)=>[i+1, x.r.code, x.r.name, x.r.size||'–', x.r.district||'–', x.v.people||0, x.v.times||0, x.v.baht||0]);
+  downloadCSV(dataRows, headers, 'PPFS_จัดอันดับ_'+label);
+}
+
+// ── ตรรกะกรอง/เรียงข้อมูลตาราง "รายละเอียดรายหน่วยบริการ" ใช้ร่วมกันทั้งแสดงผล/CSV/PDF ──
+function getMainTableSortedFilteredData(){
+  const search=(document.getElementById('tableSearch').value||'').toLowerCase();
+  let data=getFiltered().filter(r=>!search||r.name.toLowerCase().includes(search)||r.district.toLowerCase().includes(search)||r.code.includes(search));
+  data.sort((a,b)=>{
+    let va=a[sortCol]??0, vb=b[sortCol]??0;
+    if(typeof va==='string')return va.localeCompare(vb,'th')*sortDir;
+    return (va-vb)*sortDir;
+  });
+  return data;
+}
+function mainTableRowHTML(r){
+  return `<tr><td>${r.code}</td><td>${r.name}</td><td><span class="badge badge-${r.size||'S'}">${r.size||'–'}</span></td><td>${r.district||'–'}</td><td>${fmtN(r.population)}</td><td><b style="color:#0077CC">${fmtN(r.total_people)}</b></td><td>${fmtN(r.total_times)}</td><td>${(r.total_baht||0).toLocaleString('th-TH',{maximumFractionDigits:0})}</td><td>${r.svc_count} บริการ</td></tr>`;
+}
+
 function sortTable(col){
   if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=-1;}
   renderTable();
 }
 function renderTable(){
   if(!DB)return;
-  const search=document.getElementById('tableSearch').value.toLowerCase();
-  let data=getFiltered().filter(r=>!search||r.name.toLowerCase().includes(search)||r.district.toLowerCase().includes(search)||r.code.includes(search));
-  // sort
-  data.sort((a,b)=>{
-    let va=a[sortCol]??0, vb=b[sortCol]??0;
-    if(typeof va==='string')return va.localeCompare(vb,'th')*sortDir;
-    return (va-vb)*sortDir;
-  });
+  const data=getMainTableSortedFilteredData();
   const total=data.length;
   const pages=Math.max(1,Math.ceil(total/PAGE_SIZE));
   if(currentPage>pages)currentPage=1;
@@ -845,182 +1055,296 @@ function openDetail(r){
 }
 function closeDetail(){document.getElementById('detailPanel').classList.remove('open');selectedCode=null;renderTable();}
 
-// ═══ PDF EXPORT ═══
+// ═══ PDF EXPORT (แคปหน้าจอจริงของแดชบอร์ด แล้วประกอบเป็น PDF) ═══
 async function exportPDF(){
   const btn=document.getElementById('btnPDF');
-  btn.textContent='⏳ กำลังสร้าง PDF...'; btn.disabled=true;
+  const originalBtnText=btn.textContent;
+  btn.disabled=true;
+  const setBtn=t=>btn.textContent=t;
+  setBtn('⏳ กำลังเตรียมข้อมูล...');
 
-  // ── สร้าง off-screen wrapper สำหรับ render แต่ละหน้า ──
-  // วิธีนี้แก้ปัญหาภาษาไทย (ไม่ใช้ jsPDF text) และ scale ที่ถูกต้อง
-  // แต่ละหน้าจะ: สร้าง div ขนาด 1587x1123px (A4 landscape @96dpi) → html2canvas → addImage
+  // ── ค่าคงที่ของหน้ากระดาษ A4 แนวนอน @96dpi ──
+  const SCALE      = 2;     // ความละเอียดที่แคป (retina-like)
+  const PDF_W_PX   = 1587;  // 297mm
+  const PDF_H_PX   = 1123;  // 210mm
+  const HEADER_H   = 64;
+  const FOOTER_H   = 36;
+  const MARGIN     = 18;
+  const GAP        = 10;
+  const BODY_H     = PDF_H_PX - HEADER_H - FOOTER_H;      // พื้นที่เนื้อหาต่อหน้า
+  const CONTENT_W  = PDF_W_PX - MARGIN*2;                  // ความกว้างเนื้อหาที่ต้องการในหน้า PDF
 
-  const PDF_W_PX = 1587;  // A4 landscape width px @96dpi (297mm)
-  const PDF_H_PX = 1123;  // A4 landscape height px @96dpi (210mm)
-  const HEADER_H = 64;    // header px
-  const FOOTER_H = 36;    // footer px
-  const BODY_H   = PDF_H_PX - HEADER_H - FOOTER_H; // พื้นที่ content
+  // ── เก็บ state เดิมของหน้าจอไว้ เพื่อคืนค่าหลังแคปเสร็จ ──
+  const dashboard = document.getElementById('dashboard');
+  const dp        = document.getElementById('detailPanel');
+  const elPag     = document.getElementById('pagination');
+  const wasDetailOpen   = dp.classList.contains('open');
+  const prevPagDisplay  = elPag.style.display;
+  const prevDashW       = dashboard.style.width;
+  const prevDashMaxW    = dashboard.style.maxWidth;
+  const prevDashMargin  = dashboard.style.margin;
+  const prevCurrentPage = currentPage;
 
-  // ── สร้าง HTML สำหรับ header (ภาษาไทย render ถูกต้อง) ──
-  function makeHeaderHTML(pageNum, totalPages){
-    const dateLabel = DB&&DB.dateStr ? 'ข้อมูล ณ วันที่ '+DB.dateStr : '';
-    return `<div style="width:${PDF_W_PX}px;height:${HEADER_H}px;background:linear-gradient(90deg,#00539C 0%,#0077CC 50%,#00A8E8 100%);display:flex;align-items:center;padding:0 28px;box-sizing:border-box;font-family:'Sarabun',sans-serif;">
-      <div style="flex:1;">
-        <div style="color:#fff;font-size:22px;font-weight:700;line-height:1.1;">🏥 PPFS Dashboard</div>
-        <div style="color:rgba(255,255,255,.85);font-size:13px;margin-top:2px;">วิเคราะห์ผลงานบริการส่งเสริมสุขภาพ 99 รพ.สต. · องค์การบริหารส่วนจังหวัดสุราษฎร์ธานี</div>
-      </div>
-      <div style="text-align:center;color:#fff;">
-        <div style="font-size:14px;font-weight:600;">${dateLabel}</div>
-      </div>
-      <div style="margin-left:28px;background:rgba(255,255,255,.2);border-radius:20px;padding:6px 18px;color:#fff;font-size:14px;font-weight:600;white-space:nowrap;">
-        หน้า ${pageNum} / ${totalPages}
-      </div>
-    </div>`;
-  }
-
-  function makeFooterHTML(){
-    return `<div style="width:${PDF_W_PX}px;height:${FOOTER_H}px;background:#f8fafc;border-top:2px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-family:'Sarabun',sans-serif;color:#64748b;font-size:12px;">
-      จัดทำโดย ฝ่ายบริการสาธารณสุข กองสาธารณสุข องค์การบริหารส่วนจังหวัดสุราษฎร์ธานี
-    </div>`;
-  }
-
-  // ── สร้าง off-screen container แล้ว screenshot เป็น 1 canvas ต่อหน้า ──
-  async function renderPage(contentEl, pageNum, totalPages, extraStyle=''){
-    const wrap = document.createElement('div');
-    wrap.style.cssText = `position:fixed;left:-9999px;top:0;width:${PDF_W_PX}px;background:#f0f4f8;z-index:-1;`;
-    wrap.innerHTML = makeHeaderHTML(pageNum, totalPages);
-
-    const body = document.createElement('div');
-    body.style.cssText = `width:${PDF_W_PX}px;min-height:${BODY_H}px;background:#f0f4f8;padding:12px 20px;box-sizing:border-box;overflow:hidden;${extraStyle}`;
-
-    // clone content ใส่ใน body
-    const clone = contentEl.cloneNode(true);
-    clone.style.cssText += ';margin:0 !important;';
-    body.appendChild(clone);
-    wrap.appendChild(body);
-    wrap.innerHTML += makeFooterHTML();
-    document.body.appendChild(wrap);
-
-    // รอ font โหลด
-    await document.fonts.ready;
-    await new Promise(r=>setTimeout(r,120));
-
-    const canvas = await html2canvas(wrap, {
-      scale: 1,
-      useCORS: true,
-      logging: false,
-      width: PDF_W_PX,
-      height: PDF_H_PX,
-      windowWidth: PDF_W_PX,
-      backgroundColor: '#f0f4f8'
-    });
-    document.body.removeChild(wrap);
-    return canvas;
-  }
-
-  // ── render หน้าที่มีหลาย elements (KPI + charts) ──
-  async function renderMultiPage(elements, pageNum, totalPages){
-    const wrap = document.createElement('div');
-    wrap.style.cssText = `position:fixed;left:-9999px;top:0;width:${PDF_W_PX}px;background:#f0f4f8;z-index:-1;`;
-    wrap.innerHTML = makeHeaderHTML(pageNum, totalPages);
-
-    const body = document.createElement('div');
-    body.style.cssText = `width:${PDF_W_PX}px;height:${BODY_H}px;background:#f0f4f8;padding:10px 20px 0 20px;box-sizing:border-box;overflow:hidden;`;
-
-    elements.forEach(({el, flex})=>{
-      const clone = el.cloneNode(true);
-      clone.style.cssText += `;flex:${flex||1};margin-bottom:8px;`;
-      body.appendChild(clone);
-    });
-    body.style.display='flex';
-    body.style.flexDirection='column';
-    wrap.appendChild(body);
-    wrap.innerHTML += makeFooterHTML();
-    document.body.appendChild(wrap);
-
-    await document.fonts.ready;
-    await new Promise(r=>setTimeout(r,150));
-
-    const canvas = await html2canvas(wrap, {
-      scale: 1, useCORS: true, logging: false,
-      width: PDF_W_PX, height: PDF_H_PX,
-      windowWidth: PDF_W_PX, backgroundColor: '#f0f4f8'
-    });
-    document.body.removeChild(wrap);
-    return canvas;
+  let restored=false;
+  // เก็บตำแหน่ง legend เดิมของกราฟโดนัทไว้ เพื่อคืนค่าหลังแคปเสร็จ
+  const prevDoughnutLegendPos     = chartDo ? chartDo.options.plugins.legend.position : null;
+  const prevDoughnutLegendBoxW    = chartDo ? chartDo.options.plugins.legend.labels.boxWidth : null;
+  const prevDoughnutLegendPadding = chartDo ? chartDo.options.plugins.legend.labels.padding : null;
+  function restoreAll(){
+    if(restored)return; restored=true;
+    document.body.classList.remove('pdf-capturing');
+    if(wasDetailOpen) dp.classList.add('open'); else dp.classList.remove('open');
+    elPag.style.display = prevPagDisplay;
+    dashboard.style.width    = prevDashW;
+    dashboard.style.maxWidth = prevDashMaxW;
+    dashboard.style.margin   = prevDashMargin;
+    currentPage = prevCurrentPage;
+    if(chartDo && prevDoughnutLegendPos){
+      chartDo.options.plugins.legend.position       = prevDoughnutLegendPos;
+      chartDo.options.plugins.legend.labels.boxWidth = prevDoughnutLegendBoxW;
+      chartDo.options.plugins.legend.labels.padding   = prevDoughnutLegendPadding;
+      chartDo.resize(); chartDo.update('none');
+    }
+    window.dispatchEvent(new Event('resize'));
+    renderTable();
+    btn.disabled=false; setBtn(originalBtnText);
   }
 
   try{
     const {jsPDF} = window.jspdf;
 
-    // ซ่อน detail panel
-    const dp = document.getElementById('detailPanel');
-    const wasOpen = dp.classList.contains('open');
+    // ── เตรียมหน้าจอสำหรับแคป: ซ่อนพาแนล/ปุ่มที่ไม่ต้องการ, บังคับความกว้างให้คงที่ ──
+    document.body.classList.add('pdf-capturing');
     dp.classList.remove('open');
-
-    // ซ่อน pagination
-    const elPag = document.getElementById('pagination');
     elPag.style.display = 'none';
+    dashboard.style.width    = CONTENT_W + 'px';
+    dashboard.style.maxWidth = CONTENT_W + 'px';
+    dashboard.style.margin   = '0 auto';
 
-    const TOTAL = 4;
+    // ── กราฟโดนัทมี legend 10 รายการ วางไว้ 'right' — เมื่อบีบความกว้างการ์ดให้แคบลงสำหรับ PDF
+    // คอลัมน์ legend ด้านขวาจะเหลือพื้นที่ไม่พอ ทำให้ Chart.js ตัด legend บางส่วน/ทั้งหมดทิ้ง
+    // แก้โดยสลับ legend เป็น 'bottom' ชั่วคราวเฉพาะตอนแคป (จะ wrap หลายแถวแทน ไม่โดนตัด)
+    // แล้วคืนค่าเป็น 'right' หลังแคปเสร็จใน restoreAll()
+    if(chartDo){
+      chartDo.options.plugins.legend.position        = 'bottom';
+      chartDo.options.plugins.legend.labels.boxWidth  = 10;
+      chartDo.options.plugins.legend.labels.padding   = 8;
+    }
+
+    // ให้กราฟ Chart.js resize ตามความกว้างใหม่ก่อนแคป แล้วรอ font/paint ให้เสถียร
+    window.dispatchEvent(new Event('resize'));
+    await new Promise(r=>setTimeout(r,300));
+    await document.fonts.ready;
+
+    // บังคับ Chart.js ให้ resize/วาดใหม่แบบ synchronous ที่ขนาด container ปัจจุบันจริงๆ
+    // (Chart.js ใช้ ResizeObserver ภายใน ไม่ได้ฟัง window 'resize' โดยตรง เลยอาจยังวาด legend
+    //  ไม่เสร็จตอน html2canvas แคปพอดี ทำให้ legend ของกราฟโดนัทหายไปในบางครั้ง)
+    [chartD, chartDo, chartT, chartRank, detailCh].forEach(c=>{ if(c){ c.resize(); c.update('none'); } });
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    await new Promise(r=>setTimeout(r,80));
+
+    // อัตราส่วนแปลงจาก "ความกว้างจริงบนหน้าจอ" ไปเป็น "ความกว้างเป้าหมายในหน้า PDF"
+    const refWidth = document.getElementById('mainContent').getBoundingClientRect().width;
+    const wRatio   = CONTENT_W / refWidth;
+
+    // ── แคป element เดี่ยวๆ ตามจริง (ไม่ clone) คืนค่า canvas + ความสูงหลังปรับสัดส่วนแล้ว ──
+    async function snapshotLive(el){
+      const canvas = await html2canvas(el, {scale:SCALE, useCORS:true, logging:false, backgroundColor:'#ffffff'});
+      const domHeight = el.getBoundingClientRect().height;
+      return {canvas, height: domHeight * wRatio};
+    }
+
+    // ── แคป container ที่มีรายการย่อยจำนวนมาก โดยแบ่งหน้าอัตโนมัติแบบไม่ตัดผ่ากลางรายการ ──
+    // ทำโดยซ่อน/แสดงรายการย่อยทีละกลุ่ม แล้ววัดความสูงจริงของ container ก่อนแคปแต่ละรอบ
+    async function snapshotChunked(containerEl, itemSelector, maxHeightPxEffective){
+      const items = Array.from(containerEl.querySelectorAll(itemSelector));
+      if(items.length===0) return [await snapshotLive(containerEl)];
+
+      const originalDisplay = items.map(it=>it.style.display);
+      items.forEach(it=>it.style.display='none');
+
+      const results = [];
+      let start = 0;
+      while(start < items.length){
+        let end = start;
+        items[end].style.display = '';
+        end++;
+        while(end < items.length){
+          items[end].style.display = '';
+          const hEff = containerEl.getBoundingClientRect().height * wRatio;
+          if(hEff > maxHeightPxEffective){
+            items[end].style.display = 'none';
+            break;
+          }
+          end++;
+        }
+        await new Promise(r=>requestAnimationFrame(r));
+        const canvas = await html2canvas(containerEl, {scale:SCALE, useCORS:true, logging:false, backgroundColor:'#ffffff'});
+        const realHeightEff = containerEl.getBoundingClientRect().height * wRatio;
+        results.push({canvas, height: realHeightEff});
+        for(let i=start;i<end;i++) items[i].style.display='none';
+        start = end;
+      }
+      items.forEach((it,i)=>{it.style.display = originalDisplay[i];});
+      return results;
+    }
+
+    // ── จัด block (แต่ละ block มี {canvas,height}) ลงในหน้าให้พอดี โดยไม่ตัดผ่ากลาง block เดียว ──
+    function packBlocksIntoPages(blocks, maxHeightPx){
+      const pages=[]; let cur=[]; let h=0;
+      blocks.forEach(b=>{
+        const addH = b.height + (cur.length>0 ? GAP : 0);
+        if(cur.length>0 && (h+addH)>maxHeightPx){
+          pages.push(cur); cur=[b]; h=b.height;
+        }else{
+          cur.push(b); h+=addH;
+        }
+      });
+      if(cur.length) pages.push(cur);
+      return pages;
+    }
+
+    // ── header/footer ของแต่ละหน้า (สร้างจาก HTML ล้วน ไม่มี canvas จึงไม่ต้องกังวลปัญหา clone) ──
+    function headerHTML(pageNum,totalPages){
+      const dateLabel = DB&&DB.dateStr ? 'ข้อมูล ณ วันที่ '+DB.dateStr : '';
+      return `<div style="width:${PDF_W_PX}px;height:${HEADER_H}px;background:linear-gradient(90deg,#00539C 0%,#0077CC 50%,#00A8E8 100%);display:flex;align-items:center;padding:0 28px;box-sizing:border-box;font-family:'Sarabun',sans-serif;">
+        <div style="flex:1;">
+          <div style="color:#fff;font-size:22px;font-weight:700;line-height:1.1;">🏥 PPFS Dashboard</div>
+          <div style="color:rgba(255,255,255,.85);font-size:13px;margin-top:2px;">วิเคราะห์ผลงานบริการส่งเสริมสุขภาพ 99 รพ.สต. · องค์การบริหารส่วนจังหวัดสุราษฎร์ธานี</div>
+        </div>
+        <div style="text-align:center;color:#fff;"><div style="font-size:14px;font-weight:600;">${dateLabel}</div></div>
+        <div style="margin-left:28px;background:rgba(255,255,255,.2);border-radius:20px;padding:6px 18px;color:#fff;font-size:14px;font-weight:600;white-space:nowrap;">หน้า ${pageNum} / ${totalPages}</div>
+      </div>`;
+    }
+    function footerHTML(){
+      return `<div style="width:${PDF_W_PX}px;height:${FOOTER_H}px;background:#f8fafc;border-top:2px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-family:'Sarabun',sans-serif;color:#64748b;font-size:12px;">จัดทำโดย ฝ่ายบริการสาธารณสุข กองสาธารณสุข องค์การบริหารส่วนจังหวัดสุราษฎร์ธานี</div>`;
+    }
+    async function snapshotOffscreenHTML(html, width, height){
+      const wrap=document.createElement('div');
+      wrap.style.cssText=`position:fixed;left:-9999px;top:0;width:${width}px;height:${height}px;`;
+      wrap.innerHTML=html;
+      document.body.appendChild(wrap);
+      const canvas=await html2canvas(wrap, {scale:SCALE, useCORS:true, logging:false, width, height, windowWidth:width, backgroundColor:'#ffffff'});
+      document.body.removeChild(wrap);
+      return canvas;
+    }
+
+    // ══ กำหนดโหมดปัจจุบัน (Overview / Ranking) ══
+    const isRankMode = document.getElementById('rankSection').style.display !== 'none';
+
+    const sectionPages = []; // แต่ละสมาชิก = array ของ block ที่จะอยู่ใน 1 หน้า PDF
+
+    if(!isRankMode){
+      // ── หน้า: KPI + กราฟรายอำเภอ/สัดส่วน ──
+      setBtn('⏳ กำลังแคป KPI + กราฟ...');
+      const elKpi1   = document.querySelector('#overviewSections .kpi-grid');
+      const elKpi2   = document.querySelector('#overviewSections .kpi-grid2');
+      const elCharts = document.querySelector('#overviewSections .charts-grid');
+
+      // ── กราฟโดนัทมี legend 10 รายการ วางเป็น 'bottom' — ถ้าถูกบีบให้อยู่แค่ครึ่งความกว้างหน้า
+      // (เท่าที่ .charts-grid แบ่งให้ตอนอยู่คู่กับกราฟแท่ง) แถวเดียวอาจไม่พอ ทำให้ legend โดนตัด
+      // แก้โดยขยาย .charts-grid เป็นคอลัมน์เดียวชั่วคราว "เฉพาะตอนแคป" ให้กราฟโดนัทได้ความกว้างเต็มหน้า
+      // มีที่พอให้ legend ขึ้นบรรทัดใหม่ครบทุกรายการ แล้วสลับกลับเป็น 2 คอลัมน์ทันทีหลังแคปเสร็จ
+      // (หน้าจอที่ผู้ใช้เห็นจะไม่เปลี่ยนแปลงเลย เปลี่ยนแค่ระหว่างการแคปเสี้ยววินาที)
+      const prevGridCols = elCharts.style.gridTemplateColumns;
+      let blocks1;
+      try{
+        elCharts.style.gridTemplateColumns = '1fr';
+        [chartD, chartDo].forEach(c=>{ if(c){ c.resize(); c.update('none'); } });
+        await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+        await new Promise(r=>setTimeout(r,60));
+
+        blocks1 = [await snapshotLive(elKpi1), await snapshotLive(elKpi2), await snapshotLive(elCharts)];
+      }finally{
+        elCharts.style.gridTemplateColumns = prevGridCols;
+        [chartD, chartDo].forEach(c=>{ if(c){ c.resize(); c.update('none'); } });
+      }
+
+      packBlocksIntoPages(blocks1, BODY_H).forEach(p=>sectionPages.push(p));
+
+      // ── หน้า: Top 15 รพ.สต. ──
+      setBtn('⏳ กำลังแคป Top 15...');
+      const elTop15 = document.getElementById('chartTop15').closest('.chart-card');
+      sectionPages.push([await snapshotLive(elTop15)]);
+
+      // ── หน้า: ผลงานรายบริการ (28 การ์ด) แบ่งหน้าอัตโนมัติแบบไม่ตัดผ่ากลางการ์ด ──
+      setBtn('⏳ กำลังแคปผลงานรายบริการ...');
+      const elSvcTitle = Array.from(document.querySelectorAll('#overviewSections .chart-title'))
+        .find(el=>el.textContent.includes('ผลงานรายบริการ'));
+      const titleBlock = elSvcTitle ? await snapshotLive(elSvcTitle) : null;
+      const svcCapacity = BODY_H - (titleBlock ? (titleBlock.height+GAP) : 0);
+      const elSvcGrid = document.getElementById('serviceGrid');
+      const svcChunks = await snapshotChunked(elSvcGrid, '.svc-item', svcCapacity);
+      svcChunks.forEach((chunk,i)=>{
+        sectionPages.push(titleBlock ? [titleBlock, chunk] : [chunk]);
+      });
+
+      // ── หน้า: ตารางรายละเอียดรายหน่วยบริการ (ครบทุกแถว ไม่ใช่แค่หน้าที่แสดงบนจอ) ──
+      setBtn('⏳ กำลังแคปตารางรายละเอียด...');
+      const tbody = document.getElementById('tableBody');
+      const prevTbodyHTML = tbody.innerHTML;
+      tbody.innerHTML = getMainTableSortedFilteredData().map(mainTableRowHTML).join('');
+      const elTableCard = document.querySelector('#overviewSections .table-card');
+      const tableChunks = await snapshotChunked(elTableCard, '#tableBody tr', BODY_H);
+      tbody.innerHTML = prevTbodyHTML;
+      tableChunks.forEach(chunk=>sectionPages.push([chunk]));
+
+    }else{
+      // ── โหมดจัดอันดับ: หน้า KPI + กราฟจัดอันดับ ──
+      setBtn('⏳ กำลังแคปหน้าจัดอันดับ...');
+      const elRankSection = document.getElementById('rankSection');
+      sectionPages.push([await snapshotLive(elRankSection)]);
+
+      // ── หน้า: ตารางจัดอันดับ (ครบทุกแถว แบ่งหน้าอัตโนมัติแบบไม่ตัดผ่ากลางแถว) ──
+      setBtn('⏳ กำลังแคปตารางจัดอันดับ...');
+      const elRankTableCard = document.getElementById('rankTableCard');
+      const rankChunks = await snapshotChunked(elRankTableCard, '#rankTableBody tr', BODY_H);
+      rankChunks.forEach(chunk=>sectionPages.push([chunk]));
+    }
+
+    // ══ ประกอบทุกหน้าเป็น PDF ══
+    const TOTAL = sectionPages.length;
     const doc = new jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
     const PW = doc.internal.pageSize.getWidth();
     const PH = doc.internal.pageSize.getHeight();
 
-    // helper: canvas → addImage เต็มหน้า
-    function addFullPage(canvas){
-      doc.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG', 0, 0, PW, PH);
+    for(let i=0;i<sectionPages.length;i++){
+      setBtn(`⏳ กำลังประกอบหน้า ${i+1}/${TOTAL}...`);
+      if(i>0) doc.addPage();
+
+      const headerCanvas = await snapshotOffscreenHTML(headerHTML(i+1,TOTAL), PDF_W_PX, HEADER_H);
+      const footerCanvas = await snapshotOffscreenHTML(footerHTML(), PDF_W_PX, FOOTER_H);
+
+      const master = document.createElement('canvas');
+      master.width  = PDF_W_PX * SCALE;
+      master.height = PDF_H_PX * SCALE;
+      const mctx = master.getContext('2d');
+      mctx.fillStyle = '#f0f4f8';
+      mctx.fillRect(0,0,master.width,master.height);
+      mctx.drawImage(headerCanvas, 0, 0);
+      mctx.drawImage(footerCanvas, 0, (PDF_H_PX-FOOTER_H)*SCALE);
+
+      let y = HEADER_H + 10; // บาไลน์ px (ไม่ scale) — จุดเริ่มวาง block แรก
+      sectionPages[i].forEach(block=>{
+        const drawW = block.canvas.width  * wRatio;
+        const drawH = block.canvas.height * wRatio;
+        mctx.drawImage(block.canvas, MARGIN*SCALE, y*SCALE, drawW, drawH);
+        y += block.height + GAP;
+      });
+
+      doc.addImage(master.toDataURL('image/jpeg',0.95),'JPEG',0,0,PW,PH);
     }
-
-    // ════ หน้า 1: KPI + กราฟ 2 ก้อน ════
-    btn.textContent='⏳ หน้า 1/4 KPI + กราฟ...';
-    const elKpi1   = document.querySelector('.kpi-grid');
-    const elKpi2   = document.querySelector('.kpi-grid2');
-    const elCharts = document.querySelector('.charts-grid');
-    if(!elKpi1||!elKpi2||!elCharts) throw new Error('ไม่พบ element KPI/Charts');
-    const pg1 = await renderMultiPage([
-      {el:elKpi1,  flex:'0 0 auto'},
-      {el:elKpi2,  flex:'0 0 auto'},
-      {el:elCharts,flex:'1'}
-    ], 1, TOTAL);
-    addFullPage(pg1);
-
-    // ════ หน้า 2: Top 15 ════
-    btn.textContent='⏳ หน้า 2/4 Top 15...';
-    doc.addPage();
-    const cardTop15 = document.getElementById('chartTop15').closest('.chart-card') || document.getElementById('chartTop15').parentElement;
-    if(!cardTop15) throw new Error('ไม่พบ element Top15 card');
-    const pg2 = await renderPage(cardTop15, 2, TOTAL, 'display:flex;align-items:center;justify-content:center;');
-    addFullPage(pg2);
-
-    // ════ หน้า 3: Service Grid ════
-    btn.textContent='⏳ หน้า 3/4 ผลงานรายบริการ...';
-    doc.addPage();
-    const elSvc = document.getElementById('serviceGrid');
-    if(!elSvc) throw new Error('ไม่พบ element serviceGrid');
-    const pg3 = await renderPage(elSvc, 3, TOTAL);
-    addFullPage(pg3);
-
-    // ════ หน้า 4: ตาราง ════
-    btn.textContent='⏳ หน้า 4/4 ตาราง...';
-    doc.addPage();
-    const elTable = document.querySelector('.table-card');
-    if(!elTable) throw new Error('ไม่พบ element .table-card');
-    const pg4 = await renderPage(elTable, 4, TOTAL);
-    addFullPage(pg4);
-
-    // คืนค่า
-    elPag.style.display = '';
-    if(wasOpen) dp.classList.add('open');
 
     const safeDate = (DB&&DB.dateStr) ? DB.dateStr.replace(/[\/\\\s:]/g,'_') : 'export';
     doc.save('PPFS_Report_'+safeDate+'.pdf');
 
+    restoreAll();
+
   }catch(err){
-    alert('เกิดข้อผิดพลาด: '+err.message);
     console.error(err);
-    document.getElementById('pagination').style.display='';
+    alert('เกิดข้อผิดพลาด: '+err.message);
+    restoreAll();
   }
-  btn.textContent='📄 ดาวน์โหลด PDF'; btn.disabled=false;
 }
 </script>
 </body>
